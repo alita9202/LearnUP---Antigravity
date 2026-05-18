@@ -1,117 +1,86 @@
 const db = require('../config/db');
-const bcrypt = require('bcrypt');
 
-const processCheckout = async (req, res) => {
+// Inscribirse o Checkout
+const checkout = async (req, res) => {
   try {
-    // Soportar diferentes nombres que puede mandar el frontend
-    const coursesIds = req.body.coursesIds || req.body.cartItems?.map(c => c.id);
-    const userData = req.body.user || req.body.userData;
+    const { coursesIds, user } = req.body; 
+    // user puede tener { id: X } si está logueado, o { name, email, phone... } si es invitado
+
+    if (!coursesIds || coursesIds.length === 0) {
+      return res.status(400).json({ message: 'El carrito está vacío' });
+    }
 
     let userId = null;
+    let isGuest = false;
+    let guestData = {};
 
-    // ----------------------------
-    // CASO 1: Usuario autenticado
-    // ----------------------------
-    if (userData && userData.id) {
-      const [existingUser] = await db.execute(
-        'SELECT id FROM users WHERE id = ?',
-        [userData.id]
-      );
+    if (user && user.id) {
+      userId = user.id; // Alumno registrado
+    } else {
+      isGuest = true;
+      guestData = {
+        nombre: user.name,
+        email: user.email,
+        telefono: user.phone || '',
+        ciudad: user.city || '',
+        edad: user.age || null,
+        observaciones: user.observations || ''
+      };
 
-      if (existingUser.length === 0) {
-        return res.status(404).json({
-          message: 'Usuario autenticado no encontrado en la base de datos.'
-        });
+      // Opcional: Podríamos crear un usuario automático aquí, pero el requerimiento 
+      // indica relacionar directamente la inscripción o dejar temporal.
+      // Si decidimos crearlo para que ya pueda loguearse después (con pass temporal):
+      // const tempPass = await bcrypt.hash('123456', 10);
+      // let [newUser] = await db.execute('INSERT INTO usuarios (nombre, email, password_hash, rol) VALUES (?, ?, ?, "CLIENTE")', [guestData.nombre, guestData.email, tempPass]);
+      // userId = newUser.insertId;
+      // Pero por requerimiento estricto, guardaremos la inscripción directamente con guest data en la tabla.
+    }
+
+    // Guardar las inscripciones
+    for (const courseId of coursesIds) {
+      // Evitar duplicados si es usuario registrado
+      if (userId) {
+        const [existing] = await db.execute('SELECT id FROM inscripciones WHERE usuario_id = ? AND curso_id = ?', [userId, courseId]);
+        if (existing.length > 0) continue;
       }
 
-      userId = userData.id;
-    }
-
-    // ----------------------------
-    // CASO 2: Usuario nuevo (checkout)
-    // ----------------------------
-    else if (userData && userData.email) {
-      const [existing] = await db.execute(
-        'SELECT id FROM users WHERE email = ?',
-        [userData.email]
+      await db.execute(
+        `INSERT INTO inscripciones (usuario_id, curso_id, nombre_invitado, email_invitado, telefono_invitado, ciudad_invitado, edad_invitado, observaciones, estado) 
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'PENDIENTE')`,
+        [
+          userId, 
+          courseId, 
+          isGuest ? guestData.nombre : null, 
+          isGuest ? guestData.email : null, 
+          isGuest ? guestData.telefono : null, 
+          isGuest ? guestData.ciudad : null, 
+          isGuest ? guestData.edad : null, 
+          isGuest ? guestData.observaciones : null
+        ]
       );
-
-      if (existing.length > 0) {
-        return res.status(400).json({
-          message: 'El correo ya está registrado. Inicia sesión primero.'
-        });
-      }
-
-      const hashedPassword = await bcrypt.hash(userData.password, 10);
-
-      const [resultUser] = await db.execute(
-        'INSERT INTO users (name, email, password, role, phone) VALUES (?, ?, ?, "interesado", ?)',
-        [userData.name, userData.email, hashedPassword, userData.phone]
-      );
-
-      userId = resultUser.insertId;
     }
 
-    // ----------------------------
-    // ERROR: faltan datos
-    // ----------------------------
-    else {
-      return res.status(400).json({
-        message: 'Faltan datos de usuario para el registro.'
-      });
-    }
-
-    // ----------------------------
-    // VALIDAR CARRITO
-    // ----------------------------
-    if (!coursesIds || coursesIds.length === 0) {
-      return res.status(400).json({
-        message: 'El carrito no contiene cursos válidos.'
-      });
-    }
-
-    // ----------------------------
-    // TRANSACCIÓN
-    // ----------------------------
-    const connection = await db.getConnection();
-    await connection.beginTransaction();
-
-    try {
-      for (const courseId of coursesIds) {
-        const [enrolled] = await connection.execute(
-          'SELECT id FROM enrollments WHERE user_id = ? AND course_id = ?',
-          [userId, courseId]
-        );
-
-        if (enrolled.length === 0) {
-          await connection.execute(
-            'INSERT INTO enrollments (user_id, course_id, status) VALUES (?, ?, "pendiente")',
-            [userId, courseId]
-          );
-        }
-      }
-
-      await connection.commit();
-      connection.release();
-
-      res.status(201).json({
-        message: 'Inscripción procesada correctamente. Nos pondremos en contacto contigo.',
-        userId: userId
-      });
-
-    } catch (txError) {
-      await connection.rollback();
-      connection.release();
-      throw txError;
-    }
-
+    res.status(201).json({ message: 'Inscripción(es) procesada(s) con éxito' });
   } catch (error) {
-    console.error('❌ Error en checkout:', error);
-    res.status(500).json({
-      message: 'Error procesando la transacción',
-      error: error.message
-    });
+    console.error(error);
+    res.status(500).json({ message: 'Error procesando la inscripción', error: error.message });
   }
 };
 
-module.exports = { processCheckout };
+const getMyEnrollments = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const [enrollments] = await db.execute(`
+      SELECT c.*, i.estado as estado_inscripcion, i.fecha_inscripcion 
+      FROM inscripciones i
+      JOIN cursos c ON i.curso_id = c.id
+      WHERE i.usuario_id = ?
+    `, [userId]);
+
+    res.json(enrollments);
+  } catch (error) {
+    res.status(500).json({ message: 'Error obteniendo inscripciones', error: error.message });
+  }
+};
+
+module.exports = { checkout, getMyEnrollments };

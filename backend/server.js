@@ -8,18 +8,22 @@ const PORT = process.env.PORT || 5000;
 // Middlewares
 app.use(cors());
 app.use(express.json());
+const path = require('path');
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Import Routes
 const authRoutes = require('./routes/authRoutes');
 const courseRoutes = require('./routes/courseRoutes');
 const enrollmentRoutes = require('./routes/enrollmentRoutes'); // Pendiente
 const instructorRoutes = require('./routes/instructorRoutes');
+const adminRoutes = require('./routes/adminRoutes');
 
 // Use Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/courses', courseRoutes);
 app.use('/api/enrollments', enrollmentRoutes);
 app.use('/api/instructors', instructorRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Test Route
 app.get('/', (req, res) => {

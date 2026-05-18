@@ -39,8 +39,8 @@ const CartModal = ({ isOpen, onClose }) => {
                 {cart.map((course) => (
                   <li key={course.id} className="cart-item">
                     <div className="cart-item-details">
-                      <h4>{course.title}</h4>
-                      <span className="cart-item-category">{course.category}</span>
+                      <h4>{course.titulo}</h4>
+                      <span className="cart-item-category">{course.categoria}</span>
                     </div>
                     <div className="cart-item-action">
                       <span className="cart-item-price">Bs. {course.price}</span>

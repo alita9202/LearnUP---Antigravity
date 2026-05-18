@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useCart } from '../context/CartContext';
+import { useAuth } from '../context/AuthContext';
 import { Spinner } from '../components/Spinner';
 import { ServerCrash, FileSearch } from 'lucide-react';
 import './Landing.css';
@@ -9,6 +10,8 @@ const Landing = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const { addToCart } = useCart();
+
+  const { user } = useAuth();
 
   useEffect(() => {
     // Llamada real al backend local (Node.js API)
@@ -31,39 +34,86 @@ const Landing = () => {
     fetchCourses();
   }, []);
 
-  return (
-    <div className="landing">
-      {/* Hero Section */}
-      <section className="hero">
-        <div className="container hero-container animate-fade-in">
-          <div className="hero-content">
-            <h1>Descubre y Aprende <br/> <span className="highlight">Habilidades Reales</span> en Sucre</h1>
-            <p>Conecta con expertos locales. Desde cocina hasta programación, LearnUp es el marketplace donde el talento de la ciudad se encuentra con tus ganas de aprender.</p>
-            <div className="hero-actions">
-              <a href="#catalogo" className="btn btn-primary btn-large">Explorar Talleres</a>
-            </div>
-          </div>
-          <div className="hero-visual">
-            <div className="glass-card mockup-card">
-              <div className="mockup-header">
-                <span className="dot dot-red"></span>
-                <span className="dot dot-yellow"></span>
-                <span className="dot dot-green"></span>
+  const renderHero = () => {
+    if (!user) {
+      return (
+        <section className="hero">
+          <div className="container hero-container animate-fade-in">
+            <div className="hero-content">
+              <h1>Descubre y Aprende <br/> <span className="highlight">Habilidades Reales</span> en Sucre</h1>
+              <p>Conecta con expertos locales. Desde cocina hasta programación, LearnUp es el marketplace donde el talento de la ciudad se encuentra con tus ganas de aprender.</p>
+              <div className="hero-actions">
+                <a href="#catalogo" className="btn btn-primary btn-large">Explorar Talleres</a>
               </div>
-              <div className="mockup-body">
-                <h3>Tendencia esta semana</h3>
-                <div className="mock-course">
-                   <div className="mock-img"></div>
-                   <div className="mock-details">
-                     <h4>Fotografía Urbana</h4>
-                     <p>Por Ana M.</p>
-                   </div>
+            </div>
+            <div className="hero-visual">
+              <div className="glass-card mockup-card">
+                <div className="mockup-header">
+                  <span className="dot dot-red"></span>
+                  <span className="dot dot-yellow"></span>
+                  <span className="dot dot-green"></span>
+                </div>
+                <div className="mockup-body">
+                  <h3>Tendencia esta semana</h3>
+                  <div className="mock-course">
+                     <div className="mock-img"></div>
+                     <div className="mock-details">
+                       <h4>Fotografía Urbana</h4>
+                       <p>Por Ana M.</p>
+                     </div>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
+      );
+    }
+
+    if (user.role === 'CLIENTE') {
+      return (
+        <section className="hero" style={{ padding: '3rem 0', background: 'rgba(59, 130, 246, 0.05)' }}>
+          <div className="container animate-fade-in" style={{ textAlign: 'center' }}>
+            <h1 style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>¡Hola de nuevo, {user.name.split(' ')[0]}! 👋</h1>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '1.2rem', maxWidth: '600px', margin: '0 auto' }}>¿Listo para seguir aprendiendo? Echa un vistazo a los nuevos cursos que tenemos para ti.</p>
+            <a href="#catalogo" className="btn btn-primary mt-3" style={{ display: 'inline-block' }}>Ver Recomendaciones</a>
+          </div>
+        </section>
+      );
+    }
+
+    if (user.role === 'COLABORADOR') {
+      return (
+        <section className="hero" style={{ padding: '3rem 0', background: 'rgba(168, 85, 247, 0.05)' }}>
+          <div className="container animate-fade-in" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <h1 style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>Bienvenido, Profesor {user.name.split(' ')[0]}</h1>
+              <p style={{ color: 'var(--text-secondary)' }}>Inspira a otros y comparte tu conocimiento.</p>
+            </div>
+            <a href="/colaborador-panel/crear-curso" className="btn btn-primary">Crear Nuevo Curso</a>
+          </div>
+        </section>
+      );
+    }
+
+    if (user.role === 'ADMINISTRADOR') {
+      return (
+        <section className="hero" style={{ padding: '3rem 0', background: 'rgba(236, 72, 153, 0.05)' }}>
+          <div className="container animate-fade-in" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <h1 style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>Panel de Control Activo</h1>
+              <p style={{ color: 'var(--text-secondary)' }}>Supervisa la plataforma y aprueba nuevos instructores.</p>
+            </div>
+            <a href="/admin-panel" className="btn btn-primary">Ir al Dashboard</a>
+          </div>
+        </section>
+      );
+    }
+  };
+
+  return (
+    <div className="landing">
+      {renderHero()}
 
       {/* Catalog Section */}
       <section id="catalogo" className="catalog container">
@@ -95,14 +145,14 @@ const Landing = () => {
             {courses.map(course => (
               <div key={course.id} className="course-card">
                 <div className="course-image-placeholder">
-                  <span className="category-badge">{course.category}</span>
+                  <span className="category-badge">{course.categoria}</span>
                 </div>
                 <div className="course-info">
-                  <h3>{course.title}</h3>
+                  <h3>{course.titulo}</h3>
                   <p className="instructor">👤 {course.instructor_name}</p>
-                  <p className="description">{course.description}</p>
+                  <p className="description">{course.descripcion}</p>
                   <div className="course-footer">
-                    <span className="price">{course.price > 0 ? `Bs. ${course.price}` : 'Gratis'}</span>
+                    <span className="price">{course.precio > 0 ? `Bs. ${course.precio}` : 'Gratis'}</span>
                     <button 
                       className="btn btn-primary btn-sm"
                       onClick={() => addToCart(course)}

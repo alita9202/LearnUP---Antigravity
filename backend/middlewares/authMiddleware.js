@@ -22,4 +22,13 @@ const verifyToken = (req, res, next) => {
   });
 };
 
-module.exports = { verifyToken };
+const requireRole = (roles) => {
+  return (req, res, next) => {
+    if (!req.user || !roles.includes(req.user.role)) {
+      return res.status(403).json({ message: 'Acceso denegado: no tienes los permisos necesarios' });
+    }
+    next();
+  };
+};
+
+module.exports = { verifyToken, requireRole };

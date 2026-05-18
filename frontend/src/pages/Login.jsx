@@ -22,7 +22,15 @@ const Login = () => {
       const result = await login(email, password);
       
       if (result.success) {
-        navigate('/dashboard'); 
+        const userStr = localStorage.getItem('learnup_user');
+        if (userStr) {
+          const user = JSON.parse(userStr);
+          if (user.role === 'ADMINISTRADOR') navigate('/admin-panel');
+          else if (user.role === 'COLABORADOR') navigate('/colaborador-panel');
+          else navigate('/cliente-panel');
+        } else {
+          navigate('/');
+        }
       } else {
         setError(result.message);
         setIsSubmitting(false);

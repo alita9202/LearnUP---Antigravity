@@ -10,17 +10,18 @@ const login = async (req, res) => {
     const { email, password } = req.body;
     
     // Buscar usuario
-    const [users] = await db.execute('SELECT * FROM users WHERE email = ?', [email]);
+    const [users] = await db.execute('SELECT * FROM usuarios WHERE email = ?', [email]);
     if (users.length === 0) {
       return res.status(401).json({ message: 'Credenciales inválidas' });
     }
 
     const user = users[0];
 
-    // Verificar contraseña (simulación temporal si las contraseñas no están encriptadas, pero usaremos bcrypt)
-    // const passwordMatch = await bcrypt.compare(password, user.password);
-    // Para simplificar pruebas iniciales:
-    const passwordMatch = await bcrypt.compare(password, user.password);
+    if (user.estado !== 'ACTIVO') {
+      return res.status(403).json({ message: `Tu cuenta está ${user.estado.toLowerCase()}` });
+    }
+
+    const passwordMatch = await bcrypt.compare(password, user.password_hash);
 
     if (!passwordMatch) {
       return res.status(401).json({ message: 'Credenciales inválidas' });
@@ -28,7 +29,7 @@ const login = async (req, res) => {
 
     // Generar token
     const token = jwt.sign(
-      { id: user.id, role: user.role, name: user.name },
+      { id: user.id, role: user.rol, name: user.nombre },
       JWT_SECRET,
       { expiresIn: '1d' }
     );
@@ -36,7 +37,7 @@ const login = async (req, res) => {
     res.json({ 
       message: 'Autenticación exitosa', 
       token, 
-      user: { id: user.id, name: user.name, role: user.role, email: user.email } 
+      user: { id: user.id, name: user.nombre, role: user.rol, email: user.email } 
     });
 
   } catch (error) {
@@ -44,24 +45,22 @@ const login = async (req, res) => {
   }
 };
 
-// Registrar un usuario (interesado normal)
+// Registrar un usuario (CLIENTE)
 const register = async (req, res) => {
   try {
-    const { name, email, password, phone } = req.body;
+    const { name, email, password } = req.body;
     
     // Verificar si existe
-    const [existing] = await db.execute('SELECT * FROM users WHERE email = ?', [email]);
+    const [existing] = await db.execute('SELECT * FROM usuarios WHERE email = ?', [email]);
     if (existing.length > 0) {
       return res.status(400).json({ message: 'El correo ya está en uso' });
     }
 
-    // Hash de la contraseña temporalmente evitado para facilitar debug, asumiendo db vacia
-    // const hashedPassword = await bcrypt.hash(password, 10);
-   const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedPassword = await bcrypt.hash(password, 10);
 
     const [result] = await db.execute(
-      'INSERT INTO users (name, email, password, role, phone) VALUES (?, ?, ?, ?, ?)',
-      [name, email, hashedPassword, 'interesado', phone]
+      'INSERT INTO usuarios (nombre, email, password_hash, rol, estado) VALUES (?, ?, ?, ?, ?)',
+      [name, email, hashedPassword, 'CLIENTE', 'ACTIVO']
     );
 
     res.status(201).json({ message: 'Usuario registrado exitosamente', userId: result.insertId });

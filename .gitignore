@@ -137,3 +137,18 @@ dist
 # Vite logs files
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+# LearnUp generated files
+backend/uploads/
+frontend/dev-dist/
+frontend/dist/
+
+# Local test scripts
+db_test.js
+run_migration.js
+fix_literals.js
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/

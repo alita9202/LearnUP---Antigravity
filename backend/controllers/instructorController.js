@@ -1,53 +1,71 @@
 const db = require('../config/db');
-const bcrypt = require('bcrypt');
 
 const applyToBeInstructor = async (req, res) => {
   try {
-    const { name, email, password, phone, experience, specialties, cv_reference } = req.body;
+    const { 
+      name, email, phone, city, dob, 
+      specialties, experience, bio, 
+      social_links, desired_courses, price_range 
+    } = req.body;
 
-    // 1. Verificar si el correo ya existe
-    const [existing] = await db.execute('SELECT * FROM users WHERE email = ?', [email]);
-    let userId;
-
-    if (existing.length > 0) {
-      // Si ya existe, usamos su ID. Si ya es docente, lo rechazamos o avisamos
-      const user = existing[0];
-      if (user.role === 'docente' || user.role === 'admin') {
-        return res.status(400).json({ message: 'Ya tienes un rol con privilegios de instructor.' });
+    // Verificar si ya es usuario COLABORADOR o ADMIN
+    const [existingUser] = await db.execute('SELECT * FROM usuarios WHERE email = ?', [email]);
+    if (existingUser.length > 0) {
+      if (existingUser[0].rol === 'COLABORADOR' || existingUser[0].rol === 'ADMINISTRADOR') {
+        return res.status(400).json({ message: 'Ya tienes una cuenta con privilegios de instructor o administrador.' });
       }
-      userId = user.id;
-    } else {
-      // 2. Si no existe, registrar el usuario básico
-      const hashedPassword = await bcrypt.hash(password, 10);
-      const [resultUser] = await db.execute(
-        'INSERT INTO users (name, email, password, role, phone) VALUES (?, ?, ?, ?, ?)',
-        [name, email, hashedPassword, 'interesado', phone]
-      );
-      userId = resultUser.insertId;
     }
 
-    // 3. Crear el Request en instructor_requests
-    const applicationDetails = JSON.stringify({ experience, specialties, cv_reference });
-    
-    // Verificar que no haya ya una solicitud pendiente
+    // Verificar si ya tiene una solicitud PENDIENTE
     const [existingRequest] = await db.execute(
-      'SELECT id FROM instructor_requests WHERE user_id = ? AND status = "pendiente"',
-      [userId]
+      'SELECT id FROM solicitudes_colaborador WHERE email = ? AND estado = "PENDIENTE"',
+      [email]
     );
 
     if (existingRequest.length > 0) {
       return res.status(400).json({ message: 'Ya tienes una solicitud pendiente de revisión.' });
     }
 
-    await db.execute(
-      'INSERT INTO instructor_requests (user_id, application_details) VALUES (?, ?)',
-      [userId, applicationDetails]
+    // Insertar solicitud
+    const [result] = await db.execute(
+      `INSERT INTO solicitudes_colaborador 
+        (nombre, email, telefono, especialidad, experiencia, descripcion, fecha_nacimiento, redes_sociales, cursos_deseados, rango_precios, estado) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, "PENDIENTE")`,
+      [
+        name, email, phone || '', specialties || '', experience || '', bio || '', 
+        dob || null, social_links || '', desired_courses || '', price_range || ''
+      ]
     );
 
-    res.status(201).json({ message: 'Postulación enviada correctamente. El administrador la revisará.' });
+    const solicitudId = result.insertId;
+
+    // Guardar rutas de archivos si existen
+    if (req.files) {
+      const fileTypes = {
+        cv: 'CV',
+        photo: 'FOTO',
+        id_doc: 'IDENTIFICACION'
+      };
+
+      for (const [key, filesArray] of Object.entries(req.files)) {
+        if (filesArray && filesArray.length > 0) {
+          const file = filesArray[0];
+          // Generar URL pública (asumiendo host en port 5000)
+          const fileUrl = `/uploads/${file.filename}`;
+          
+          await db.execute(
+            'INSERT INTO archivos_colaborador (solicitud_id, tipo_archivo, url_archivo) VALUES (?, ?, ?)',
+            [solicitudId, fileTypes[key] || 'PORTAFOLIO', fileUrl]
+          );
+        }
+      }
+    }
+
+    res.status(201).json({ message: 'Tu solicitud ha sido enviada exitosamente. Pronto nos pondremos en contacto contigo.' });
 
   } catch (error) {
-    res.status(500).json({ message: 'Error en el servidor', error: error.message });
+    console.error(error);
+    res.status(500).json({ message: 'Error procesando tu solicitud', error: error.message });
   }
 };
 

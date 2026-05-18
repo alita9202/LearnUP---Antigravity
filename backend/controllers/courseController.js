@@ -4,9 +4,10 @@ const db = require('../config/db');
 const getAllCourses = async (req, res) => {
   try {
     const [courses] = await db.execute(`
-      SELECT c.*, u.name as instructor_name 
-      FROM courses c
-      JOIN users u ON c.instructor_id = u.id
+      SELECT c.*, u.nombre as instructor_name 
+      FROM cursos c
+      JOIN usuarios u ON c.colaborador_id = u.id
+      WHERE c.estado = 'ACTIVO'
     `);
     res.json(courses);
   } catch (error) {
@@ -19,9 +20,9 @@ const getCourseById = async (req, res) => {
   try {
     const { id } = req.params;
     const [courses] = await db.execute(`
-      SELECT c.*, u.name as instructor_name 
-      FROM courses c
-      JOIN users u ON c.instructor_id = u.id
+      SELECT c.*, u.nombre as instructor_name 
+      FROM cursos c
+      JOIN usuarios u ON c.colaborador_id = u.id
       WHERE c.id = ?
     `, [id]);
     
@@ -35,19 +36,19 @@ const getCourseById = async (req, res) => {
   }
 };
 
-// Crear un curso (Solo Docentes/Admins)
+// Crear un curso (Solo COLABORADOR/ADMINISTRADOR)
 const createCourse = async (req, res) => {
   try {
-    const { title, description, price, category, location } = req.body;
-    const instructor_id = req.user.id; // Asignado por middleware de Auth
+    const { title, description, price, category, location, modalidad, cupos, imagen } = req.body;
+    const colaborador_id = req.user.id; 
 
-    if (req.user.role !== 'docente' && req.user.role !== 'admin') {
+    if (req.user.role !== 'COLABORADOR' && req.user.role !== 'ADMINISTRADOR') {
       return res.status(403).json({ message: 'No tienes permisos para crear cursos' });
     }
 
     const [result] = await db.execute(
-      'INSERT INTO courses (title, description, price, category, instructor_id, location) VALUES (?, ?, ?, ?, ?, ?)',
-      [title, description, price, category, instructor_id, location]
+      'INSERT INTO cursos (titulo, descripcion, categoria, precio, fecha, modalidad, ubicacion, cupos, imagen, estado, colaborador_id) VALUES (?, ?, ?, ?, NOW(), ?, ?, ?, ?, ?, ?)',
+      [title, description, category, price || 0, modalidad || 'Presencial', location || 'Sucre', cupos || 0, imagen || null, 'ACTIVO', colaborador_id]
     );
 
     res.status(201).json({ message: 'Curso creado', courseId: result.insertId });
