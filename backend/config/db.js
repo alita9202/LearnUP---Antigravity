@@ -1,28 +1,24 @@
-const mysql = require('mysql2/promise');
+const mysql = require('mysql2');
+require('dotenv').config();
 
-// Configuración de la conexión a MySQL
-// Orientado al entorno XAMPP local por defecto
-const dbConfig = {
+const db = mysql.createConnection({
   host: process.env.DB_HOST || 'localhost',
   user: process.env.DB_USER || 'root',
   password: process.env.DB_PASSWORD || '',
   database: process.env.DB_NAME || 'learnup_db',
-  waitForConnections: true,
-  connectionLimit: 10,
-  queueLimit: 0
-};
+  port: process.env.DB_PORT || 3306,
+  ssl: {
+    rejectUnauthorized: false
+  },
+  connectTimeout: 60000
+});
 
-// Crear el pool de conexiones
-const pool = mysql.createPool(dbConfig);
+db.connect((err) => {
+  if (err) {
+    console.error('Error conectando a MySQL:', err);
+    return;
+  }
+  console.log('Conectado a MySQL correctamente');
+});
 
-// Validar la conexión
-pool.getConnection()
-  .then(connection => {
-    console.log('✅ Conectado a la base de datos MySQL [learnup_db]');
-    connection.release();
-  })
-  .catch(err => {
-    console.error('❌ Error conectando a la base de datos:\n', err.message);
-  });
-
-module.exports = pool;
+module.exports = db;
