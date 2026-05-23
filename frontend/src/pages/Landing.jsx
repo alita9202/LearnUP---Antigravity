@@ -17,7 +17,7 @@ const Landing = () => {
     // Llamada real al backend local (Node.js API)
     const fetchCourses = async () => {
       try {
-        const response = await fetch('http://localhost:5000/api/courses');
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/courses`);
         if (!response.ok) {
           throw new Error('Error de red al intentar conectar con el servidor');
         }
@@ -144,8 +144,15 @@ const Landing = () => {
           <div className="course-grid">
             {courses.map(course => (
               <div key={course.id} className="course-card">
-                <div className="course-image-placeholder">
-                  <span className="category-badge">{course.categoria}</span>
+                <div className="course-image" style={{ height: '180px', background: 'rgba(255,255,255,0.05)', position: 'relative', overflow: 'hidden', borderTopLeftRadius: '12px', borderTopRightRadius: '12px' }}>
+                  {course.imagen_url ? (
+                    <img src={`${import.meta.env.VITE_API_URL}${course.imagen_url}`} alt={course.titulo} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ) : (
+                    <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.02)' }}>
+                      <span style={{ opacity: 0.5 }}>Sin Portada</span>
+                    </div>
+                  )}
+                  <span className="category-badge" style={{ position: 'absolute', top: '10px', left: '10px', background: 'var(--primary)', color: '#fff', padding: '0.2rem 0.6rem', borderRadius: '12px', fontSize: '0.75rem' }}>{course.categoria}</span>
                 </div>
                 <div className="course-info">
                   <h3>{course.titulo}</h3>

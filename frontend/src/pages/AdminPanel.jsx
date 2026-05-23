@@ -8,7 +8,7 @@ const AdminDashboard = () => {
   const [stats, setStats] = useState(null);
 
   useEffect(() => {
-    fetch('http://localhost:5000/api/admin/stats', {
+    fetch(`${import.meta.env.VITE_API_URL}/api/admin/stats`, {
       headers: { Authorization: `Bearer ${localStorage.getItem('learnup_token')}` }
     }).then(res => res.json()).then(data => setStats(data));
   }, []);
@@ -44,7 +44,7 @@ const AdminSolicitudes = () => {
 
   const fetchRequests = async () => {
     try {
-      const res = await fetch('http://localhost:5000/api/admin/requests', {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/requests`, {
         headers: { Authorization: `Bearer ${localStorage.getItem('learnup_token')}` }
       });
       const data = await res.json();
@@ -61,7 +61,7 @@ const AdminSolicitudes = () => {
   const handleApprove = async (id) => {
     if (!window.confirm('¿Seguro de aprobar a este instructor? Se creará su cuenta automáticamente.')) return;
     try {
-      const res = await fetch(`http://localhost:5000/api/admin/requests/${id}/approve`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/requests/${id}/approve`, {
         method: 'PUT',
         headers: { Authorization: `Bearer ${localStorage.getItem('learnup_token')}` }
       });
@@ -77,7 +77,7 @@ const AdminSolicitudes = () => {
   const handleReject = async (id) => {
     if (!rejectReason) return alert('Debes especificar un motivo de rechazo');
     try {
-      const res = await fetch(`http://localhost:5000/api/admin/requests/${id}/reject`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/requests/${id}/reject`, {
         method: 'PUT',
         headers: { 
           'Content-Type': 'application/json',
@@ -96,8 +96,9 @@ const AdminSolicitudes = () => {
   if (loading) return <div style={{ display: 'flex', justifyContent: 'center', marginTop: '3rem' }}><Spinner /></div>;
 
   return (
-    <div className="animate-fade-in" style={{ padding: '2rem' }}>
-      <h2 style={{ marginBottom: '2rem' }}>Gestión de Solicitudes</h2>
+    <>
+      <div className="animate-fade-in" style={{ padding: '2rem' }}>
+        <h2 style={{ marginBottom: '2rem' }}>Gestión de Solicitudes</h2>
       
       <div className="glass-card" style={{ overflow: 'hidden', borderRadius: '12px' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
@@ -140,6 +141,8 @@ const AdminSolicitudes = () => {
         </table>
       </div>
 
+      </div>
+
       {/* Modal Detalles */}
       {selectedReq && (
         <div className="modal-overlay">
@@ -175,7 +178,7 @@ const AdminSolicitudes = () => {
                 <strong>Archivos Adjuntos:</strong>
                 <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem', flexWrap: 'wrap' }}>
                   {selectedReq.archivos.map((file, i) => (
-                    <a key={i} href={`http://localhost:5000${file.url_archivo}`} target="_blank" rel="noreferrer" 
+                    <a key={i} href={`${import.meta.env.VITE_API_URL}${file.url_archivo}`} target="_blank" rel="noreferrer" 
                        style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', background: 'rgba(59, 130, 246, 0.2)', color: '#60a5fa', borderRadius: '8px', textDecoration: 'none' }}>
                       <Download size={16} /> {file.tipo_archivo}
                     </a>
@@ -212,7 +215,7 @@ const AdminSolicitudes = () => {
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 };
 
@@ -228,7 +231,7 @@ const AdminUsuarios = () => {
 
   const fetchUsers = async () => {
     try {
-      const res = await fetch('http://localhost:5000/api/admin/users', {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/users`, {
         headers: { Authorization: `Bearer ${localStorage.getItem('learnup_token')}` }
       });
       const data = await res.json();
@@ -267,7 +270,7 @@ const AdminUsuarios = () => {
     if (!editingUser && formData.password.length < 6) return alert('La contraseña debe tener al menos 6 caracteres');
     
     try {
-      const url = editingUser ? `http://localhost:5000/api/admin/users/${editingUser.id}` : 'http://localhost:5000/api/admin/users';
+      const url = editingUser ? `${import.meta.env.VITE_API_URL}/api/admin/users/${editingUser.id}` : `${import.meta.env.VITE_API_URL}/api/admin/users`;
       const method = editingUser ? 'PUT' : 'POST';
       const res = await fetch(url, {
         method,
@@ -298,7 +301,7 @@ const AdminUsuarios = () => {
     if (!window.confirm('¿Seguro que deseas eliminar este usuario? Esta acción no se puede deshacer.')) return;
     
     try {
-      const res = await fetch(`http://localhost:5000/api/admin/users/${id}`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/users/${id}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${localStorage.getItem('learnup_token')}` }
       });
@@ -317,7 +320,7 @@ const AdminUsuarios = () => {
     const newStatus = currentStatus === 'ACTIVO' ? 'SUSPENDIDO' : 'ACTIVO';
     
     try {
-      const res = await fetch(`http://localhost:5000/api/admin/users/${id}/status`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/users/${id}/status`, {
         method: 'PUT',
         headers: { 
           'Content-Type': 'application/json',
@@ -336,8 +339,9 @@ const AdminUsuarios = () => {
   if (loading) return <div style={{ display: 'flex', justifyContent: 'center', marginTop: '3rem' }}><Spinner /></div>;
 
   return (
-    <div className="animate-fade-in" style={{ padding: '2rem' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+    <>
+      <div className="animate-fade-in" style={{ padding: '2rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
         <h2>Gestión de Usuarios</h2>
         <button className="btn btn-primary" onClick={() => handleOpenModal()}>
           <Plus size={18} style={{ marginRight: '0.5rem' }} /> Nuevo Usuario
@@ -401,6 +405,8 @@ const AdminUsuarios = () => {
         </table>
       </div>
 
+      </div>
+
       {showModal && (
         <div className="modal-overlay">
           <div className="modal-content glass-card animate-slide-up">
@@ -461,7 +467,160 @@ const AdminUsuarios = () => {
           </div>
         </div>
       )}
-    </div>
+    </>
+  );
+};
+
+const AdminCursos = () => {
+  const [courses, setCourses] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [rejectModal, setRejectModal] = useState({ show: false, courseId: null, motivo: '' });
+
+  const fetchPendingCourses = async () => {
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/courses/pending`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('learnup_token')}` }
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setCourses(Array.isArray(data) ? data : []);
+      } else {
+        console.error('Error del backend:', data);
+        setCourses([]);
+      }
+    } catch (err) {
+      console.error('Error de red:', err);
+      setCourses([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { fetchPendingCourses(); }, []);
+
+  const handleApprove = async (id) => {
+    if (!window.confirm('¿Aprobar este curso y publicarlo en la plataforma?')) return;
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/courses/${id}/validate`, {
+        method: 'PUT',
+        headers: { 
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('learnup_token')}` 
+        },
+        body: JSON.stringify({ estado_validacion: 'APROBADO' })
+      });
+      if (res.ok) {
+        alert('Curso aprobado exitosamente');
+        fetchPendingCourses();
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleReject = async (e) => {
+    e.preventDefault();
+    if (!rejectModal.motivo) return alert('Debes especificar un motivo de rechazo');
+    
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/courses/${rejectModal.courseId}/validate`, {
+        method: 'PUT',
+        headers: { 
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('learnup_token')}` 
+        },
+        body: JSON.stringify({ estado_validacion: 'RECHAZADO', motivo_rechazo: rejectModal.motivo })
+      });
+      if (res.ok) {
+        alert('Curso rechazado');
+        setRejectModal({ show: false, courseId: null, motivo: '' });
+        fetchPendingCourses();
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  if (loading) return <div style={{ display: 'flex', justifyContent: 'center', marginTop: '3rem' }}><Spinner /></div>;
+
+  return (
+    <>
+      <div className="animate-fade-in" style={{ padding: '2rem', maxWidth: '1200px', margin: '0 auto' }}>
+        <h2 style={{ marginBottom: '2rem' }}>Validación de Cursos Pendientes</h2>
+      
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.5rem' }}>
+        {courses.map(course => (
+          <div key={course.id} className="glass-card" style={{ borderRadius: '12px', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ height: '180px', background: 'rgba(255,255,255,0.05)', position: 'relative' }}>
+              {course.imagen_url ? (
+                <img src={`${import.meta.env.VITE_API_URL}${course.imagen_url}`} alt={course.titulo} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              ) : (
+                <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b' }}>
+                  <span>Sin Imagen</span>
+                </div>
+              )}
+            </div>
+            
+            <div style={{ padding: '1.5rem', flex: 1, display: 'flex', flexDirection: 'column' }}>
+              <h3 style={{ marginBottom: '0.5rem', fontSize: '1.2rem' }}>{course.titulo}</h3>
+              <p style={{ color: '#94a3b8', fontSize: '0.9rem', marginBottom: '1rem' }}>Por: {course.instructor_name}</p>
+              
+              <div style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '1rem', flex: 1 }}>
+                <p><strong>Categoría:</strong> {course.categoria}</p>
+                <p><strong>Modalidad:</strong> {course.modalidad}</p>
+                <p><strong>Precio:</strong> Bs. {course.precio}</p>
+                <p style={{ marginTop: '0.5rem', background: 'rgba(255,255,255,0.05)', padding: '0.5rem', borderRadius: '4px' }}>{course.descripcion}</p>
+              </div>
+
+              <div style={{ display: 'flex', gap: '0.5rem', marginTop: 'auto' }}>
+                <button className="btn btn-outline" style={{ flex: 1, borderColor: '#ef4444', color: '#ef4444' }} onClick={() => setRejectModal({ show: true, courseId: course.id, motivo: '' })}>
+                  <XCircle size={16} style={{ marginRight: '0.5rem' }} /> Rechazar
+                </button>
+                <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => handleApprove(course.id)}>
+                  <CheckCircle size={16} style={{ marginRight: '0.5rem' }} /> Aprobar
+                </button>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+      
+      {courses.length === 0 && (
+        <div className="glass-card" style={{ padding: '3rem', textAlign: 'center', borderRadius: '12px' }}>
+          <h3 style={{ color: 'var(--text-secondary)' }}>No hay cursos pendientes de validación.</h3>
+        </div>
+      )}
+
+      </div>
+
+      {/* Modal de Rechazo (Corregido UX/UI) */}
+      {rejectModal.show && (
+        <div className="modal-overlay" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+          <div className="modal-content glass-card animate-slide-up" style={{ width: '100%', maxWidth: '500px', maxHeight: '90vh', overflowY: 'auto', borderRadius: '16px' }}>
+            <button style={{ position: 'absolute', top: '1.5rem', right: '1.5rem', background: 'transparent', border: 'none', color: '#fff', cursor: 'pointer' }} onClick={() => setRejectModal({ show: false, courseId: null, motivo: '' })}>
+              <XCircle size={24} />
+            </button>
+            <h3 style={{ marginBottom: '1.5rem', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '1rem', color: '#ef4444' }}>
+              Rechazar Curso
+            </h3>
+            
+            <form onSubmit={handleReject} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              <div>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem' }}>Motivo de Rechazo *</label>
+                <textarea required rows="4" placeholder="Explica detalladamente por qué el curso no es aprobado..." value={rejectModal.motivo} onChange={e => setRejectModal({ ...rejectModal, motivo: e.target.value })} style={{ width: '100%', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', padding: '0.75rem', borderRadius: '8px', resize: 'vertical' }} />
+              </div>
+              
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+                <button type="button" className="btn btn-outline" onClick={() => setRejectModal({ show: false, courseId: null, motivo: '' })}>Cancelar</button>
+                <button type="submit" className="btn btn-outline" style={{ background: '#ef4444', color: '#fff', borderColor: '#ef4444' }}>
+                  Confirmar Rechazo
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </>
   );
 };
 
@@ -474,7 +633,7 @@ const AdminPanel = () => {
       <Route path="/" element={<AdminDashboard />} />
       <Route path="/solicitudes" element={<AdminSolicitudes />} />
       <Route path="/usuarios" element={<AdminUsuarios />} />
-      <Route path="/cursos" element={<div style={{padding:'2rem'}}><h3>Cursos (Próximamente)</h3></div>} />
+      <Route path="/cursos" element={<AdminCursos />} />
       <Route path="/reportes" element={<div style={{padding:'2rem'}}><h3>Reportes (Próximamente)</h3></div>} />
       <Route path="/configuracion" element={<div style={{padding:'2rem'}}><h3>Configuración</h3></div>} />
     </Routes>

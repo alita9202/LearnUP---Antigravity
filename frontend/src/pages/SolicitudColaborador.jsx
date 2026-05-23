@@ -36,7 +36,7 @@ const SolicitudColaborador = () => {
     if (files.id_doc) data.append('id_doc', files.id_doc);
 
     try {
-      const response = await fetch('http://localhost:5000/api/instructors/apply', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/instructors/apply`, {
         method: 'POST',
         body: data,
       });

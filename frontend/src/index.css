@@ -156,7 +156,7 @@ a:hover {
 .modal-overlay {
   position: fixed;
   inset: 0;
-  top: 72px; /* Height of the sticky navbar */
+  top: 0;
   background: rgba(0, 0, 0, 0.85);
   z-index: 9999;
   display: flex;

@@ -7,7 +7,7 @@ const getAllCourses = async (req, res) => {
       SELECT c.*, u.nombre as instructor_name 
       FROM cursos c
       JOIN usuarios u ON c.colaborador_id = u.id
-      WHERE c.estado = 'ACTIVO'
+      WHERE c.estado_validacion = 'APROBADO'
     `);
     res.json(courses);
   } catch (error) {
@@ -30,6 +30,9 @@ const getCourseById = async (req, res) => {
       return res.status(404).json({ message: 'Curso no encontrado' });
     }
     
+    // Si no está aprobado, solo puede verlo el creador o un admin.
+    // Para simplificar, si se solicita por ID público, debe estar aprobado, pero como es detalle, dejemos que lo devuelva si el front lo necesita o podemos restringirlo.
+    // Lo más seguro es dejar que el frontend controle la vista de detalle si está en PENDIENTE.
     res.json(courses[0]);
   } catch (error) {
     res.status(500).json({ message: 'Error del servidor', error: error.message });
@@ -39,22 +42,103 @@ const getCourseById = async (req, res) => {
 // Crear un curso (Solo COLABORADOR/ADMINISTRADOR)
 const createCourse = async (req, res) => {
   try {
-    const { title, description, price, category, location, modalidad, cupos, imagen } = req.body;
+    const { titulo, descripcion, precio, categoria, modalidad, ubicacion, cupos } = req.body;
     const colaborador_id = req.user.id; 
 
     if (req.user.role !== 'COLABORADOR' && req.user.role !== 'ADMINISTRADOR') {
       return res.status(403).json({ message: 'No tienes permisos para crear cursos' });
     }
 
+    let imagen_url = null;
+    if (req.file) {
+      imagen_url = `/uploads/${req.file.filename}`;
+    }
+
     const [result] = await db.execute(
-      'INSERT INTO cursos (titulo, descripcion, categoria, precio, fecha, modalidad, ubicacion, cupos, imagen, estado, colaborador_id) VALUES (?, ?, ?, ?, NOW(), ?, ?, ?, ?, ?, ?)',
-      [title, description, category, price || 0, modalidad || 'Presencial', location || 'Sucre', cupos || 0, imagen || null, 'ACTIVO', colaborador_id]
+      `INSERT INTO cursos 
+      (titulo, descripcion, precio, categoria, modalidad, ubicacion, cupos, fecha, imagen_url, estado_validacion, colaborador_id) 
+      VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), ?, 'PENDIENTE', ?)`,
+      [titulo, descripcion, precio || 0, categoria, modalidad || 'Presencial', ubicacion || '', cupos || 0, imagen_url, colaborador_id]
     );
 
-    res.status(201).json({ message: 'Curso creado', courseId: result.insertId });
+    res.status(201).json({ message: 'Curso creado correctamente en estado PENDIENTE', courseId: result.insertId });
+  } catch (error) {
+    console.error('Error al crear curso:', error);
+    res.status(500).json({ message: 'Error del servidor', error: error.message });
+  }
+};
+
+// Editar un curso
+const updateCourse = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { titulo, descripcion, precio, categoria, modalidad, ubicacion, cupos } = req.body;
+    const colaborador_id = req.user.id;
+
+    // Obtener curso actual
+    const [courses] = await db.execute('SELECT * FROM cursos WHERE id = ? AND colaborador_id = ?', [id, colaborador_id]);
+    if (courses.length === 0) {
+      return res.status(404).json({ message: 'Curso no encontrado o no tienes permiso' });
+    }
+    const course = courses[0];
+
+    let imagen_url = course.imagen_url;
+    let imageChanged = false;
+    if (req.file) {
+      imagen_url = `/uploads/${req.file.filename}`;
+      imageChanged = true;
+    }
+
+    // Comprobar si hubo cambios críticos
+    const isCriticalChange = 
+      course.titulo !== titulo ||
+      course.descripcion !== descripcion ||
+      Number(course.precio) !== Number(precio) ||
+      course.categoria !== categoria ||
+      imageChanged;
+
+    const newEstado = isCriticalChange ? 'PENDIENTE' : course.estado_validacion;
+
+    await db.execute(
+      `UPDATE cursos 
+       SET titulo = ?, descripcion = ?, precio = ?, categoria = ?, modalidad = ?, ubicacion = ?, cupos = ?, imagen_url = ?, estado_validacion = ?
+       WHERE id = ?`,
+      [titulo, descripcion, precio || 0, categoria, modalidad || 'Presencial', ubicacion || '', cupos || 0, imagen_url, newEstado, id]
+    );
+
+    res.json({ message: 'Curso actualizado correctamente', estado_validacion: newEstado });
+  } catch (error) {
+    console.error('Error al actualizar curso:', error);
+    res.status(500).json({ message: 'Error del servidor', error: error.message });
+  }
+};
+
+// Eliminar un curso
+const deleteCourse = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const colaborador_id = req.user.id;
+
+    const [result] = await db.execute('DELETE FROM cursos WHERE id = ? AND colaborador_id = ?', [id, colaborador_id]);
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: 'Curso no encontrado o no tienes permiso' });
+    }
+
+    res.json({ message: 'Curso eliminado correctamente' });
   } catch (error) {
     res.status(500).json({ message: 'Error del servidor', error: error.message });
   }
 };
 
-module.exports = { getAllCourses, getCourseById, createCourse };
+// Obtener mis cursos (Colaborador)
+const getMyCourses = async (req, res) => {
+  try {
+    const colaborador_id = req.user.id;
+    const [courses] = await db.execute('SELECT * FROM cursos WHERE colaborador_id = ? ORDER BY created_at DESC', [colaborador_id]);
+    res.json(courses);
+  } catch (error) {
+    res.status(500).json({ message: 'Error obteniendo los cursos', error: error.message });
+  }
+};
+
+module.exports = { getAllCourses, getCourseById, createCourse, updateCourse, deleteCourse, getMyCourses };

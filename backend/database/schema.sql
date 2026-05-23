@@ -1,51 +1,63 @@
-CREATE DATABASE IF NOT EXISTS learnup_db;
-USE learnup_db;
-
--- Tabla de Usuarios
-CREATE TABLE IF NOT EXISTS users (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(150) NOT NULL,
-    email VARCHAR(150) NOT NULL UNIQUE,
-    password VARCHAR(255) NOT NULL,
-    role ENUM('admin', 'docente', 'interesado') DEFAULT 'interesado',
-    phone VARCHAR(20),
-    cv_url TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+CREATE TABLE IF NOT EXISTS usuarios (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  nombre VARCHAR(100) NOT NULL,
+  email VARCHAR(100) UNIQUE NOT NULL,
+  password_hash VARCHAR(255) NOT NULL,
+  rol ENUM('ADMINISTRADOR', 'COLABORADOR', 'CLIENTE') NOT NULL DEFAULT 'CLIENTE',
+  estado ENUM('ACTIVO', 'INACTIVO') DEFAULT 'ACTIVO',
+  telefono VARCHAR(20) DEFAULT NULL,
+  ciudad VARCHAR(100) DEFAULT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
--- Tabla de Cursos / Talleres
-CREATE TABLE IF NOT EXISTS courses (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    title VARCHAR(200) NOT NULL,
-    description TEXT NOT NULL,
-    price DECIMAL(10, 2) DEFAULT 0.00,
-    category VARCHAR(100),
-    instructor_id INT NOT NULL,
-    location VARCHAR(200) DEFAULT 'Sucre',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (instructor_id) REFERENCES users(id) ON DELETE CASCADE
+CREATE TABLE IF NOT EXISTS solicitudes_colaborador (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  nombre VARCHAR(100) NOT NULL,
+  email VARCHAR(100) NOT NULL,
+  telefono VARCHAR(20),
+  especialidad VARCHAR(100),
+  experiencia TEXT,
+  descripcion TEXT,
+  estado ENUM('PENDIENTE', 'APROBADO', 'RECHAZADO') DEFAULT 'PENDIENTE',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Tabla de Inscripciones (Matrículas)
-CREATE TABLE IF NOT EXISTS enrollments (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT NOT NULL,
-    course_id INT NOT NULL,
-    status ENUM('pendiente', 'confirmado') DEFAULT 'pendiente',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-    FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE
+CREATE TABLE IF NOT EXISTS archivos_colaborador (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  solicitud_id INT NOT NULL,
+  nombre_archivo VARCHAR(255) NOT NULL,
+  ruta_archivo VARCHAR(255) NOT NULL,
+  tipo_archivo VARCHAR(50),
+  FOREIGN KEY (solicitud_id) REFERENCES solicitudes_colaborador(id) ON DELETE CASCADE
 );
 
--- Tabla de Solicitudes de Instructores (Postulaciones)
-CREATE TABLE IF NOT EXISTS instructor_requests (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT NOT NULL,
-    application_details TEXT, -- JSON o texto indicando tipo de cursos, experiencia, etc.
-    status ENUM('pendiente', 'aprobado', 'rechazado') DEFAULT 'pendiente',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+CREATE TABLE IF NOT EXISTS cursos (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  titulo VARCHAR(200) NOT NULL,
+  descripcion TEXT,
+  categoria VARCHAR(100),
+  precio DECIMAL(10, 2) NOT NULL,
+  modalidad VARCHAR(50),
+  ubicacion VARCHAR(200),
+  cupos INT NOT NULL,
+  fecha DATETIME,
+  imagen_url VARCHAR(255),
+  estado VARCHAR(50) DEFAULT 'ACTIVO', -- Legacy field
+  estado_validacion ENUM('PENDIENTE', 'APROBADO', 'RECHAZADO') DEFAULT 'PENDIENTE', -- Sprint 2
+  motivo_rechazo TEXT, -- Sprint 2
+  colaborador_id INT NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (colaborador_id) REFERENCES usuarios(id)
 );
 
--- Datos de prueba genéricos (opcional)
--- INSERT INTO users (name, email, password, role) VALUES ('Admin', 'admin@learnup.com', '$2b$10$X...', 'admin');
+CREATE TABLE IF NOT EXISTS inscripciones (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  curso_id INT NOT NULL,
+  usuario_id INT NOT NULL,
+  estado ENUM('ACTIVA', 'CANCELADA') DEFAULT 'ACTIVA',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (curso_id) REFERENCES cursos(id),
+  FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
+);

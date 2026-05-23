@@ -10,8 +10,7 @@ const ClientePanel = () => {
   return (
     <div style={{ padding: '2rem' }}>
       <h1>Mi Panel (Cliente)</h1>
-      <p>Bienvenido, {user.name}</p>
-      <button onClick={logout} style={{ marginBottom: '1rem', background: '#dc3545', color: '#fff', padding: '0.5rem 1rem', border: 'none', borderRadius: '4px' }}>Cerrar Sesión</button>
+      <p style={{ marginBottom: '1rem' }}>Bienvenido, {user.name}</p>
       
       <h2>Mis Cursos Inscritos</h2>
       <p>Aún no te has inscrito a ningún curso.</p>

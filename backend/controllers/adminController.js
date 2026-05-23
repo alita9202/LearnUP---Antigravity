@@ -167,6 +167,41 @@ const deleteUser = async (req, res) => {
   }
 };
 
+const getPendingCourses = async (req, res) => {
+  try {
+    const [courses] = await db.execute(`
+      SELECT c.*, u.nombre as instructor_name 
+      FROM cursos c
+      JOIN usuarios u ON c.colaborador_id = u.id
+      WHERE c.estado_validacion = 'PENDIENTE'
+      ORDER BY c.id ASC
+    `);
+    res.json(courses);
+  } catch (error) {
+    res.status(500).json({ message: 'Error obteniendo cursos pendientes', error: error.message });
+  }
+};
+
+const validateCourse = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { estado_validacion, motivo_rechazo } = req.body;
+    
+    if (estado_validacion !== 'APROBADO' && estado_validacion !== 'RECHAZADO') {
+      return res.status(400).json({ message: 'Estado inválido' });
+    }
+
+    await db.execute(
+      "UPDATE cursos SET estado_validacion = ?, motivo_rechazo = ? WHERE id = ?",
+      [estado_validacion, motivo_rechazo || null, id]
+    );
+
+    res.json({ message: `Curso ${estado_validacion.toLowerCase()} correctamente` });
+  } catch (error) {
+    res.status(500).json({ message: 'Error validando curso', error: error.message });
+  }
+};
+
 module.exports = { 
   getDashboardStats, 
   getRequests, 
@@ -176,5 +211,7 @@ module.exports = {
   toggleUserStatus,
   createUser,
   updateUser,
-  deleteUser
+  deleteUser,
+  getPendingCourses,
+  validateCourse
 };
