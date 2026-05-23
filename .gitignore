@@ -152,3 +152,12 @@ fix_literals.js
 .DS_Store
 Thumbs.db
 .vscode/
+
+
+.env
+backend/.env
+frontend/.env
+backend/uploads/
+frontend/dev-dist/
+frontend/dist/
+node_modules/
