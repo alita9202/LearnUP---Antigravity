@@ -1,14 +1,42 @@
 const db = require('../config/db');
 
-// Obtener todos los cursos (Catálogo público)
+// Obtener todos los cursos (Catálogo público) con soporte para filtros
 const getAllCourses = async (req, res) => {
   try {
-    const [courses] = await db.execute(`
+    const { search, categoria, modalidad, maxPrice } = req.query;
+    
+    let baseQuery = `
       SELECT c.*, u.nombre as instructor_name 
       FROM cursos c
       JOIN usuarios u ON c.colaborador_id = u.id
       WHERE c.estado_validacion = 'APROBADO'
-    `);
+    `;
+    
+    const params = [];
+    
+    if (search) {
+      baseQuery += ` AND (c.titulo LIKE ? OR c.descripcion LIKE ?)`;
+      params.push(`%${search}%`, `%${search}%`);
+    }
+    
+    if (categoria) {
+      baseQuery += ` AND c.categoria = ?`;
+      params.push(categoria);
+    }
+    
+    if (modalidad) {
+      baseQuery += ` AND c.modalidad = ?`;
+      params.push(modalidad);
+    }
+    
+    if (maxPrice) {
+      baseQuery += ` AND c.precio <= ?`;
+      params.push(maxPrice);
+    }
+    
+    baseQuery += ` ORDER BY c.created_at DESC`;
+
+    const [courses] = await db.execute(baseQuery, params);
     res.json(courses);
   } catch (error) {
     res.status(500).json({ message: 'Error obteniendo los cursos', error: error.message });

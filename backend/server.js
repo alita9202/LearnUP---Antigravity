@@ -25,6 +25,7 @@ const courseRoutes = require('./routes/courseRoutes');
 const enrollmentRoutes = require('./routes/enrollmentRoutes'); // Pendiente
 const instructorRoutes = require('./routes/instructorRoutes');
 const adminRoutes = require('./routes/adminRoutes');
+const requestRoutes = require('./routes/requestRoutes'); // Sprint 3
 
 // Use Routes
 app.use('/api/auth', authRoutes);
@@ -32,6 +33,7 @@ app.use('/api/courses', courseRoutes);
 app.use('/api/enrollments', enrollmentRoutes);
 app.use('/api/instructors', instructorRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/requests', requestRoutes); // Sprint 3
 
 // Test Route
 app.get('/', (req, res) => {

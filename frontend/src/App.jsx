@@ -10,6 +10,7 @@ import AdminPanel from './pages/AdminPanel';
 import ColaboradorPanel from './pages/ColaboradorPanel';
 import ClientePanel from './pages/ClientePanel';
 import SolicitudColaborador from './pages/SolicitudColaborador';
+import CourseDetail from './pages/CourseDetail';
 import { CartProvider } from './context/CartContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import './App.css'; 
@@ -51,6 +52,7 @@ function App() {
           <Layout>
             <Routes>
               <Route path="/" element={<Landing />} />
+              <Route path="/curso/:id" element={<CourseDetail />} />
               <Route path="/checkout" element={<Checkout />} />
               <Route path="/login" element={<Login />} />
               <Route path="/dashboard" element={<Dashboard />} />

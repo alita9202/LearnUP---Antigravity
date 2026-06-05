@@ -2,37 +2,54 @@ import React, { useEffect, useState } from 'react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { Spinner } from '../components/Spinner';
-import { ServerCrash, FileSearch } from 'lucide-react';
+import { ServerCrash, FileSearch, Filter, Search, User, Sparkles, BookOpen, Star, TrendingUp } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import ImageWithFallback from '../components/ImageWithFallback';
+import CourseCarousel from '../components/CourseCarousel';
 import './Landing.css';
 
 const Landing = () => {
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [categoria, setCategoria] = useState('');
+  const [modalidad, setModalidad] = useState('');
+  
   const { addToCart } = useCart();
-
   const { user } = useAuth();
+  const navigate = useNavigate();
+
+  const fetchCourses = async () => {
+    try {
+      setLoading(true);
+      const queryParams = new URLSearchParams();
+      if (searchTerm) queryParams.append('search', searchTerm);
+      if (categoria) queryParams.append('categoria', categoria);
+      if (modalidad) queryParams.append('modalidad', modalidad);
+
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/courses?${queryParams.toString()}`);
+      if (!response.ok) {
+        throw new Error('Error de red al intentar conectar con el servidor');
+      }
+      const data = await response.json();
+      setCourses(data);
+      setLoading(false);
+    } catch (err) {
+      console.error("Error obteniendo cursos: ", err);
+      setError("Lo sentimos, no pudimos cargar los cursos. Verifica la conexión.");
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    // Llamada real al backend local (Node.js API)
-    const fetchCourses = async () => {
-      try {
-        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/courses`);
-        if (!response.ok) {
-          throw new Error('Error de red al intentar conectar con el servidor');
-        }
-        const data = await response.json();
-        setCourses(data);
-        setLoading(false);
-      } catch (err) {
-        console.error("Error obteniendo cursos: ", err);
-        setError("Lo sentimos, no pudimos cargar los cursos. Verifica que XAMPP y Node.js estén corriendo.");
-        setLoading(false);
-      }
-    };
-
     fetchCourses();
-  }, []);
+  }, [categoria, modalidad]); // Refetch when filters change
+
+  const handleSearch = (e) => {
+    e.preventDefault();
+    fetchCourses();
+  };
 
   const renderHero = () => {
     if (!user) {
@@ -74,7 +91,9 @@ const Landing = () => {
       return (
         <section className="hero" style={{ padding: '3rem 0', background: 'rgba(59, 130, 246, 0.05)' }}>
           <div className="container animate-fade-in" style={{ textAlign: 'center' }}>
-            <h1 style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>¡Hola de nuevo, {user.name.split(' ')[0]}! 👋</h1>
+            <h1 style={{ fontSize: '2.5rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+              ¡Hola de nuevo, {user.name.split(' ')[0]}! <Sparkles size={32} color="#fbbf24" />
+            </h1>
             <p style={{ color: 'var(--text-secondary)', fontSize: '1.2rem', maxWidth: '600px', margin: '0 auto' }}>¿Listo para seguir aprendiendo? Echa un vistazo a los nuevos cursos que tenemos para ti.</p>
             <a href="#catalogo" className="btn btn-primary mt-3" style={{ display: 'inline-block' }}>Ver Recomendaciones</a>
           </div>
@@ -115,14 +134,61 @@ const Landing = () => {
     <div className="landing">
       {renderHero()}
 
+      {/* Featured Section Carousel */}
+      {!loading && !error && courses.length > 0 && (
+        <section className="featured-carousel-section" style={{ padding: '0 2rem' }}>
+          <CourseCarousel courses={courses} />
+        </section>
+      )}
+
       {/* Catalog Section */}
       <section id="catalogo" className="catalog container">
-        <div className="catalog-header">
-          <h2>Explora nuestro catálogo</h2>
-          <div className="search-bar">
-            <input type="text" placeholder="Buscar talleres, categorías..." />
-            <button className="btn btn-primary">Buscar</button>
+        <div className="catalog-header" style={{ background: 'rgba(255,255,255,0.02)', padding: '2rem', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.05)', marginBottom: '3rem', backdropFilter: 'blur(10px)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.5rem' }}>
+            <BookOpen size={28} color="var(--secondary-color)" />
+            <h2 style={{ fontSize: '2rem', margin: 0 }}>Explora nuestro catálogo</h2>
           </div>
+          <form onSubmit={handleSearch} className="search-bar" style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'stretch' }}>
+            <div style={{ position: 'relative', flex: '1 1 300px' }}>
+              <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'rgba(255,255,255,0.5)' }} />
+              <input 
+                type="text" 
+                placeholder="Buscar talleres, cursos, habilidades..." 
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                style={{ width: '100%', height: '100%', padding: '0.8rem 1rem 0.8rem 2.5rem', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(0,0,0,0.2)', color: 'white', fontSize: '1rem', outline: 'none', transition: 'border-color 0.3s' }}
+              />
+            </div>
+            <select 
+              value={categoria} 
+              onChange={(e) => setCategoria(e.target.value)}
+              style={{ padding: '0.8rem 1rem', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(0,0,0,0.2)', color: 'white', fontSize: '1rem', outline: 'none' }}
+            >
+              <option value="" style={{ background: '#1e293b' }}>Todas las categorías</option>
+              <option value="Tecnología" style={{ background: '#1e293b' }}>Tecnología</option>
+              <option value="Arte" style={{ background: '#1e293b' }}>Arte</option>
+              <option value="Negocios" style={{ background: '#1e293b' }}>Negocios</option>
+              <option value="Idiomas" style={{ background: '#1e293b' }}>Idiomas</option>
+              <option value="Repostería" style={{ background: '#1e293b' }}>Repostería</option>
+              <option value="Gastronomía" style={{ background: '#1e293b' }}>Gastronomía</option>
+              <option value="Fotografía" style={{ background: '#1e293b' }}>Fotografía</option>
+              <option value="Educación" style={{ background: '#1e293b' }}>Educación</option>
+            </select>
+            <select 
+              value={modalidad} 
+              onChange={(e) => setModalidad(e.target.value)}
+              style={{ padding: '0.8rem 1rem', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(0,0,0,0.2)', color: 'white', fontSize: '1rem', outline: 'none' }}
+            >
+              <option value="" style={{ background: '#1e293b' }}>Todas las modalidades</option>
+              <option value="Presencial" style={{ background: '#1e293b' }}>Presencial</option>
+              <option value="Online" style={{ background: '#1e293b' }}>Online</option>
+              <option value="Virtual" style={{ background: '#1e293b' }}>Virtual</option>
+              <option value="Híbrido" style={{ background: '#1e293b' }}>Híbrido</option>
+            </select>
+            <button type="submit" className="btn btn-primary" style={{ padding: '0.8rem 1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', borderRadius: '12px' }}>
+              <Filter size={18} /> Filtrar
+            </button>
+          </form>
         </div>
 
         {loading ? (
@@ -144,27 +210,30 @@ const Landing = () => {
           <div className="course-grid">
             {courses.map(course => (
               <div key={course.id} className="course-card">
-                <div className="course-image" style={{ height: '180px', background: 'rgba(255,255,255,0.05)', position: 'relative', overflow: 'hidden', borderTopLeftRadius: '12px', borderTopRightRadius: '12px' }}>
-                  {course.imagen_url ? (
-                    <img src={`${import.meta.env.VITE_API_URL}${course.imagen_url}`} alt={course.titulo} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  ) : (
-                    <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.02)' }}>
-                      <span style={{ opacity: 0.5 }}>Sin Portada</span>
-                    </div>
-                  )}
-                  <span className="category-badge" style={{ position: 'absolute', top: '10px', left: '10px', background: 'var(--primary)', color: '#fff', padding: '0.2rem 0.6rem', borderRadius: '12px', fontSize: '0.75rem' }}>{course.categoria}</span>
+                <div className="course-image" style={{ aspectRatio: '4/3', background: 'rgba(255,255,255,0.05)', position: 'relative', overflow: 'hidden', borderTopLeftRadius: '12px', borderTopRightRadius: '12px' }}>
+                  <ImageWithFallback
+                    src={course.imagen_url}
+                    alt={course.titulo}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center' }}
+                    fallbackText={course.categoria || 'Curso'}
+                  />
+                  <span className="category-badge" style={{ position: 'absolute', top: '10px', left: '10px', background: 'var(--primary-color, #4f46e5)', color: '#fff', padding: '0.2rem 0.6rem', borderRadius: '12px', fontSize: '0.75rem', zIndex: 10 }}>{course.categoria}</span>
                 </div>
                 <div className="course-info">
                   <h3>{course.titulo}</h3>
-                  <p className="instructor">👤 {course.instructor_name}</p>
-                  <p className="description">{course.descripcion}</p>
-                  <div className="course-footer">
+                  <p className="instructor" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                    <User size={14} /> {course.instructor_name}
+                  </p>
+                  <p className="description" style={{ overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+                    {course.descripcion}
+                  </p>
+                  <div className="course-footer" style={{ marginTop: '1rem' }}>
                     <span className="price">{course.precio > 0 ? `Bs. ${course.precio}` : 'Gratis'}</span>
                     <button 
-                      className="btn btn-primary btn-sm"
-                      onClick={() => addToCart(course)}
+                      className="btn btn-outline btn-sm"
+                      onClick={() => navigate(`/curso/${course.id}`)}
                     >
-                      Añadir al Carrito
+                      Solicitar Cupo
                     </button>
                   </div>
                 </div>

@@ -11,6 +11,7 @@ const {
   updateUser,
   deleteUser,
   getPendingCourses,
+  getAllAdminCourses,
   validateCourse
 } = require('../controllers/adminController');
 const { verifyToken, requireRole } = require('../middlewares/authMiddleware');
@@ -32,6 +33,7 @@ router.patch('/users/:id/status', toggleUserStatus); // Adding PATCH as per requ
 
 // Rutas de Validación de Cursos Sprint 2
 router.get('/courses/pending', getPendingCourses);
+router.get('/courses', getAllAdminCourses);
 router.put('/courses/:id/validate', validateCourse);
 
 module.exports = router;

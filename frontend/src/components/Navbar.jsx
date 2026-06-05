@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ShoppingCart, LogIn, UserPlus, LogOut, UserCircle, BookOpen, Menu } from 'lucide-react';
+import { ShoppingCart, LogIn, UserPlus, LogOut, UserCircle, BookOpen, Menu, Rocket } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import CartModal from './CartModal';
-import InstallPWA from './InstallPWA';
 import './Navbar.css';
 
 const Navbar = ({ toggleMobileSidebar }) => {
@@ -31,15 +30,13 @@ const Navbar = ({ toggleMobileSidebar }) => {
                 <Menu size={20} />
               </button>
             )}
-            <Link to="/" className="nav-logo">
-              <span className="logo-icon">🚀</span>
+            <Link to="/" className="nav-logo" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <Rocket size={24} color="var(--primary-color)" />
               {!hasSidebar && <h1>LearnUp</h1>}
             </Link>
           </div>
           
           <div className="nav-links">
-            {!hasSidebar && <InstallPWA />}
-            
             {/* El Carrito lo mostramos siempre para CLIENTE y Visitantes */}
             {(!user || user.role === 'CLIENTE') && (
               <button 

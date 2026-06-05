@@ -182,6 +182,20 @@ const getPendingCourses = async (req, res) => {
   }
 };
 
+const getAllAdminCourses = async (req, res) => {
+  try {
+    const [courses] = await db.execute(`
+      SELECT c.*, u.nombre as instructor_name 
+      FROM cursos c
+      JOIN usuarios u ON c.colaborador_id = u.id
+      ORDER BY c.fecha DESC
+    `);
+    res.json(courses);
+  } catch (error) {
+    res.status(500).json({ message: 'Error obteniendo cursos', error: error.message });
+  }
+};
+
 const validateCourse = async (req, res) => {
   try {
     const { id } = req.params;
@@ -213,5 +227,6 @@ module.exports = {
   updateUser,
   deleteUser,
   getPendingCourses,
+  getAllAdminCourses,
   validateCourse
 };

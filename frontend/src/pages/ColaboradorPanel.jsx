@@ -1,16 +1,26 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Navigate } from 'react-router-dom';
-import { Plus, Edit, Trash2, XCircle, Image as ImageIcon } from 'lucide-react';
+import { Plus, Edit, Trash2, XCircle, Image as ImageIcon, CheckCircle, XSquare } from 'lucide-react';
 import { Spinner } from '../components/Spinner';
 
 const ColaboradorPanel = () => {
   const { user, logout } = useAuth();
+  const [activeTab, setActiveTab] = useState('cursos'); // 'cursos' o 'solicitudes'
+  
   const [courses, setCourses] = useState([]);
+  const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
+  
+  // Modal de Curso
   const [showModal, setShowModal] = useState(false);
   const [editingCourse, setEditingCourse] = useState(null);
   const [saving, setSaving] = useState(false);
+
+  // Modal de Rechazo de Solicitud
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [rejectingRequest, setRejectingRequest] = useState(null);
+  const [rejectReason, setRejectReason] = useState('');
 
   // Form State
   const [titulo, setTitulo] = useState('');
@@ -23,8 +33,18 @@ const ColaboradorPanel = () => {
   const [imagen, setImagen] = useState(null);
 
   useEffect(() => {
-    fetchCourses();
-  }, []);
+    fetchData();
+  }, [activeTab]);
+
+  const fetchData = async () => {
+    setLoading(true);
+    if (activeTab === 'cursos') {
+      await fetchCourses();
+    } else {
+      await fetchRequests();
+    }
+    setLoading(false);
+  };
 
   const fetchCourses = async () => {
     try {
@@ -37,9 +57,52 @@ const ColaboradorPanel = () => {
       }
     } catch (error) {
       console.error('Error fetching courses:', error);
-    } finally {
-      setLoading(false);
     }
+  };
+
+  const fetchRequests = async () => {
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/requests/collaborator`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('learnup_token')}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setRequests(data);
+      }
+    } catch (error) {
+      console.error('Error fetching requests:', error);
+    }
+  };
+
+  const handleRequestStatus = async (id, status, reason = null) => {
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/requests/${id}/status`, {
+        method: 'PUT',
+        headers: { 
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('learnup_token')}` 
+        },
+        body: JSON.stringify({ estado: status, motivo_rechazo: reason })
+      });
+      if (res.ok) {
+        alert(`Solicitud ${status.toLowerCase()} correctamente`);
+        setShowRejectModal(false);
+        setRejectReason('');
+        fetchRequests();
+      } else {
+        const data = await res.json();
+        alert(data.message || 'Error al actualizar solicitud');
+      }
+    } catch (error) {
+      console.error('Error updating request:', error);
+      alert('Error de red al actualizar solicitud');
+    }
+  };
+
+  const openRejectModal = (request) => {
+    setRejectingRequest(request);
+    setRejectReason('');
+    setShowRejectModal(true);
   };
 
   const openModal = (course = null) => {
@@ -149,6 +212,14 @@ const ColaboradorPanel = () => {
     }
   };
 
+  const getRequestStatusBadge = (estado) => {
+    switch (estado) {
+      case 'ACEPTADA': return <span style={{ color: '#4ade80', fontWeight: 'bold' }}>ACEPTADA</span>;
+      case 'RECHAZADA': return <span style={{ color: '#f87171', fontWeight: 'bold' }}>RECHAZADA</span>;
+      default: return <span style={{ color: '#fcd34d', fontWeight: 'bold' }}>PENDIENTE</span>;
+    }
+  };
+
   return (
     <React.Fragment>
       <div className="animate-fade-in" style={{ padding: '2rem', maxWidth: '1200px', margin: '0 auto' }}>
@@ -158,15 +229,23 @@ const ColaboradorPanel = () => {
           <p style={{ color: 'var(--text-secondary)' }}>Bienvenido, {user.name}</p>
         </div>
         <div style={{ display: 'flex', gap: '1rem' }}>
-          <button className="btn btn-primary" onClick={() => openModal()}>
-            <Plus size={18} style={{ marginRight: '0.5rem' }} /> Nuevo Curso
+          <button className={`btn ${activeTab === 'cursos' ? 'btn-primary' : 'btn-outline'}`} onClick={() => setActiveTab('cursos')}>
+            Mis Cursos
           </button>
+          <button className={`btn ${activeTab === 'solicitudes' ? 'btn-primary' : 'btn-outline'}`} onClick={() => setActiveTab('solicitudes')}>
+            Solicitudes Recibidas
+          </button>
+          {activeTab === 'cursos' && (
+            <button className="btn btn-primary" onClick={() => openModal()} style={{ marginLeft: '1rem' }}>
+              <Plus size={18} style={{ marginRight: '0.5rem' }} /> Nuevo Curso
+            </button>
+          )}
         </div>
       </div>
 
       {loading ? (
         <div style={{ display: 'flex', justifyContent: 'center', marginTop: '3rem' }}><Spinner /></div>
-      ) : (
+      ) : activeTab === 'cursos' ? (
         <React.Fragment>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.5rem' }}>
             {courses.map(course => (
@@ -218,10 +297,48 @@ const ColaboradorPanel = () => {
             </div>
           )}
         </React.Fragment>
+      ) : (
+        <React.Fragment>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            {requests.map(req => (
+              <div key={req.id} className="glass-card" style={{ padding: '1.5rem', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+                <div style={{ flex: '1 1 300px' }}>
+                  <h3 style={{ fontSize: '1.1rem', marginBottom: '0.5rem' }}>{req.nombre} <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: 'normal' }}>({req.email})</span></h3>
+                  <p style={{ color: 'var(--primary)', marginBottom: '0.5rem' }}><strong>Curso:</strong> {req.curso_titulo}</p>
+                  <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}><strong>Teléfono:</strong> {req.telefono} | <strong>Ciudad:</strong> {req.ciudad}</p>
+                  {req.mensaje && <p style={{ fontSize: '0.9rem', marginTop: '0.5rem', padding: '0.5rem', background: 'rgba(0,0,0,0.2)', borderRadius: '4px' }}>"{req.mensaje}"</p>}
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.5rem' }}>
+                  <div style={{ marginBottom: '0.5rem' }}>Estado: {getRequestStatusBadge(req.estado)}</div>
+                  {req.estado === 'PENDIENTE' && (
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <button className="btn btn-outline" style={{ borderColor: '#4ade80', color: '#4ade80', padding: '0.5rem 1rem' }} onClick={() => handleRequestStatus(req.id, 'ACEPTADA')}>
+                        Aceptar
+                      </button>
+                      <button className="btn btn-outline" style={{ borderColor: '#f87171', color: '#f87171', padding: '0.5rem 1rem' }} onClick={() => openRejectModal(req)}>
+                        Rechazar
+                      </button>
+                    </div>
+                  )}
+                  {req.estado === 'RECHAZADA' && req.motivo_rechazo && (
+                    <div style={{ fontSize: '0.8rem', color: '#f87171', maxWidth: '200px', textAlign: 'right' }}>
+                      Motivo: {req.motivo_rechazo}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+            {requests.length === 0 && (
+              <div className="glass-card" style={{ padding: '3rem', textAlign: 'center', borderRadius: '12px' }}>
+                <h3 style={{ color: 'var(--text-secondary)' }}>Aún no tienes solicitudes.</h3>
+              </div>
+            )}
+          </div>
+        </React.Fragment>
       )}
       </div>
 
-      {/* Modal Premium (Corregido UX/UI) */}
+      {/* Modal de Crear/Editar Curso */}
       {showModal && (
         <div className="modal-overlay" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
           <div className="modal-content glass-card animate-slide-up" style={{ width: '100%', maxWidth: '600px', maxHeight: '90vh', overflowY: 'auto', borderRadius: '16px' }}>
@@ -286,6 +403,29 @@ const ColaboradorPanel = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Rechazo de Solicitud */}
+      {showRejectModal && (
+        <div className="modal-overlay" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+          <div className="modal-content glass-card animate-slide-up" style={{ width: '100%', maxWidth: '400px', borderRadius: '16px' }}>
+            <h3 style={{ marginBottom: '1.5rem', color: '#f87171' }}>Rechazar Solicitud</h3>
+            <p style={{ marginBottom: '1rem', fontSize: '0.9rem' }}>Por favor indica el motivo del rechazo para <strong>{rejectingRequest?.nombre}</strong>:</p>
+            <textarea 
+              rows="3" 
+              value={rejectReason} 
+              onChange={e => setRejectReason(e.target.value)} 
+              placeholder="Ej. Curso lleno, no cumple requisitos..."
+              style={{ width: '100%', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', padding: '0.75rem', borderRadius: '8px', resize: 'vertical' }} 
+            />
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1.5rem' }}>
+              <button className="btn btn-outline" onClick={() => setShowRejectModal(false)}>Cancelar</button>
+              <button className="btn btn-primary" style={{ background: '#f87171' }} onClick={() => handleRequestStatus(rejectingRequest.id, 'RECHAZADA', rejectReason)}>
+                Confirmar Rechazo
+              </button>
+            </div>
           </div>
         </div>
       )}

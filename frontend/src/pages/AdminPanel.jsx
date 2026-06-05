@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { Navigate, Routes, Route, Link, useLocation } from 'react-router-dom';
 import { Users, FileText, CheckCircle, XCircle, Eye, Download, Search, Edit, Trash2, Plus, RefreshCw } from 'lucide-react';
 import { Spinner } from '../components/Spinner';
+import ImageWithFallback from '../components/ImageWithFallback';
 
 const AdminDashboard = () => {
   const [stats, setStats] = useState(null);
@@ -474,11 +475,12 @@ const AdminUsuarios = () => {
 const AdminCursos = () => {
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('PENDIENTE');
   const [rejectModal, setRejectModal] = useState({ show: false, courseId: null, motivo: '' });
 
-  const fetchPendingCourses = async () => {
+  const fetchAllCourses = async () => {
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/courses/pending`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/courses`, {
         headers: { Authorization: `Bearer ${localStorage.getItem('learnup_token')}` }
       });
       const data = await res.json();
@@ -496,7 +498,7 @@ const AdminCursos = () => {
     }
   };
 
-  useEffect(() => { fetchPendingCourses(); }, []);
+  useEffect(() => { fetchAllCourses(); }, []);
 
   const handleApprove = async (id) => {
     if (!window.confirm('¿Aprobar este curso y publicarlo en la plataforma?')) return;
@@ -511,7 +513,7 @@ const AdminCursos = () => {
       });
       if (res.ok) {
         alert('Curso aprobado exitosamente');
-        fetchPendingCourses();
+        fetchAllCourses();
       }
     } catch (err) {
       console.error(err);
@@ -534,7 +536,7 @@ const AdminCursos = () => {
       if (res.ok) {
         alert('Curso rechazado');
         setRejectModal({ show: false, courseId: null, motivo: '' });
-        fetchPendingCourses();
+        fetchAllCourses();
       }
     } catch (err) {
       console.error(err);
@@ -543,57 +545,122 @@ const AdminCursos = () => {
 
   if (loading) return <div style={{ display: 'flex', justifyContent: 'center', marginTop: '3rem' }}><Spinner /></div>;
 
+  const pendientes = courses.filter(c => c.estado_validacion === 'PENDIENTE').length;
+  const aprobados = courses.filter(c => c.estado_validacion === 'APROBADO').length;
+  const rechazados = courses.filter(c => c.estado_validacion === 'RECHAZADO').length;
+
+  const filteredCourses = activeTab === 'TODOS' ? courses : courses.filter(c => c.estado_validacion === activeTab);
+
   return (
     <>
-      <div className="animate-fade-in" style={{ padding: '2rem', maxWidth: '1200px', margin: '0 auto' }}>
-        <h2 style={{ marginBottom: '2rem' }}>Validación de Cursos Pendientes</h2>
-      
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.5rem' }}>
-        {courses.map(course => (
-          <div key={course.id} className="glass-card" style={{ borderRadius: '12px', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-            <div style={{ height: '180px', background: 'rgba(255,255,255,0.05)', position: 'relative' }}>
-              {course.imagen_url ? (
-                <img src={`${import.meta.env.VITE_API_URL}${course.imagen_url}`} alt={course.titulo} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-              ) : (
-                <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b' }}>
-                  <span>Sin Imagen</span>
-                </div>
-              )}
-            </div>
-            
-            <div style={{ padding: '1.5rem', flex: 1, display: 'flex', flexDirection: 'column' }}>
-              <h3 style={{ marginBottom: '0.5rem', fontSize: '1.2rem' }}>{course.titulo}</h3>
-              <p style={{ color: '#94a3b8', fontSize: '0.9rem', marginBottom: '1rem' }}>Por: {course.instructor_name}</p>
-              
-              <div style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '1rem', flex: 1 }}>
-                <p><strong>Categoría:</strong> {course.categoria}</p>
-                <p><strong>Modalidad:</strong> {course.modalidad}</p>
-                <p><strong>Precio:</strong> Bs. {course.precio}</p>
-                <p style={{ marginTop: '0.5rem', background: 'rgba(255,255,255,0.05)', padding: '0.5rem', borderRadius: '4px' }}>{course.descripcion}</p>
-              </div>
+      <div className="animate-fade-in" style={{ padding: '2rem' }}>
+        <h2 style={{ marginBottom: '2rem' }}>Gestión de Cursos</h2>
 
-              <div style={{ display: 'flex', gap: '0.5rem', marginTop: 'auto' }}>
-                <button className="btn btn-outline" style={{ flex: 1, borderColor: '#ef4444', color: '#ef4444' }} onClick={() => setRejectModal({ show: true, courseId: course.id, motivo: '' })}>
-                  <XCircle size={16} style={{ marginRight: '0.5rem' }} /> Rechazar
-                </button>
-                <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => handleApprove(course.id)}>
-                  <CheckCircle size={16} style={{ marginRight: '0.5rem' }} /> Aprobar
-                </button>
-              </div>
-            </div>
+        {/* Tarjetas Resumen */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
+          <div className="glass-card" style={{ padding: '1.5rem', borderRadius: '12px', borderLeft: '4px solid #3b82f6' }}>
+            <h4 style={{ color: 'var(--text-secondary)' }}>Total Cursos</h4>
+            <span style={{ fontSize: '2rem', fontWeight: 'bold' }}>{courses.length}</span>
           </div>
-        ))}
-      </div>
-      
-      {courses.length === 0 && (
-        <div className="glass-card" style={{ padding: '3rem', textAlign: 'center', borderRadius: '12px' }}>
-          <h3 style={{ color: 'var(--text-secondary)' }}>No hay cursos pendientes de validación.</h3>
+          <div className="glass-card" style={{ padding: '1.5rem', borderRadius: '12px', borderLeft: '4px solid #f59e0b' }}>
+            <h4 style={{ color: 'var(--text-secondary)' }}>Pendientes</h4>
+            <span style={{ fontSize: '2rem', fontWeight: 'bold' }}>{pendientes}</span>
+          </div>
+          <div className="glass-card" style={{ padding: '1.5rem', borderRadius: '12px', borderLeft: '4px solid #10b981' }}>
+            <h4 style={{ color: 'var(--text-secondary)' }}>Aprobados</h4>
+            <span style={{ fontSize: '2rem', fontWeight: 'bold' }}>{aprobados}</span>
+          </div>
+          <div className="glass-card" style={{ padding: '1.5rem', borderRadius: '12px', borderLeft: '4px solid #ef4444' }}>
+            <h4 style={{ color: 'var(--text-secondary)' }}>Rechazados</h4>
+            <span style={{ fontSize: '2rem', fontWeight: 'bold' }}>{rechazados}</span>
+          </div>
         </div>
-      )}
 
+        {/* Pestañas */}
+        <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '1rem', flexWrap: 'wrap' }}>
+          {['PENDIENTE', 'APROBADO', 'RECHAZADO', 'TODOS'].map(tab => (
+            <button
+              key={tab}
+              className={`btn ${activeTab === tab ? 'btn-primary' : 'btn-outline'}`}
+              onClick={() => setActiveTab(tab)}
+            >
+              {tab === 'TODOS' ? 'Todos' : tab.charAt(0) + tab.slice(1).toLowerCase()}
+            </button>
+          ))}
+        </div>
+
+        {/* Tabla de Cursos */}
+        <div className="glass-card" style={{ overflow: 'hidden', borderRadius: '12px', overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '900px' }}>
+            <thead>
+              <tr style={{ background: 'rgba(255,255,255,0.05)', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+                <th style={{ padding: '1rem', width: '80px' }}>Imagen</th>
+                <th style={{ padding: '1rem' }}>Curso</th>
+                <th style={{ padding: '1rem' }}>Colaborador</th>
+                <th style={{ padding: '1rem' }}>Detalles</th>
+                <th style={{ padding: '1rem' }}>Estado</th>
+                <th style={{ padding: '1rem' }}>Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredCourses.map(course => (
+                <tr key={course.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                  <td style={{ padding: '1rem' }}>
+                    <div style={{ width: '60px', height: '40px', borderRadius: '4px', overflow: 'hidden' }}>
+                      <ImageWithFallback 
+                        src={course.imagen_url} 
+                        alt={course.titulo} 
+                        fallbackText="No img" 
+                        className="w-full h-full object-cover" 
+                      />
+                    </div>
+                  </td>
+                  <td style={{ padding: '1rem' }}>
+                    <strong>{course.titulo}</strong>
+                  </td>
+                  <td style={{ padding: '1rem' }}>{course.instructor_name}</td>
+                  <td style={{ padding: '1rem', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                    {course.categoria} | {course.modalidad} | Bs. {course.precio}
+                  </td>
+                  <td style={{ padding: '1rem' }}>
+                    <span style={{ 
+                      padding: '0.25rem 0.5rem', borderRadius: '12px', fontSize: '0.8rem',
+                      background: course.estado_validacion === 'PENDIENTE' ? 'rgba(245, 158, 11, 0.2)' : course.estado_validacion === 'APROBADO' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)',
+                      color: course.estado_validacion === 'PENDIENTE' ? '#fcd34d' : course.estado_validacion === 'APROBADO' ? '#6ee7b7' : '#fca5a5'
+                    }}>
+                      {course.estado_validacion}
+                    </span>
+                    {course.estado_validacion === 'RECHAZADO' && course.motivo_rechazo && (
+                      <div style={{ fontSize: '0.75rem', color: '#fca5a5', marginTop: '4px', maxWidth: '150px' }}>
+                        Motivo: {course.motivo_rechazo}
+                      </div>
+                    )}
+                  </td>
+                  <td style={{ padding: '1rem' }}>
+                    {course.estado_validacion === 'PENDIENTE' ? (
+                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <button className="btn btn-sm btn-primary" onClick={() => handleApprove(course.id)} title="Aprobar">
+                          <CheckCircle size={16} />
+                        </button>
+                        <button className="btn btn-sm btn-outline" style={{ borderColor: '#ef4444', color: '#ef4444' }} onClick={() => setRejectModal({ show: true, courseId: course.id, motivo: '' })} title="Rechazar">
+                          <XCircle size={16} />
+                        </button>
+                      </div>
+                    ) : (
+                      <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>N/A</span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+              {filteredCourses.length === 0 && (
+                <tr><td colSpan="6" style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>No hay cursos en esta categoría.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
-      {/* Modal de Rechazo (Corregido UX/UI) */}
+      {/* Modal de Rechazo */}
       {rejectModal.show && (
         <div className="modal-overlay" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
           <div className="modal-content glass-card animate-slide-up" style={{ width: '100%', maxWidth: '500px', maxHeight: '90vh', overflowY: 'auto', borderRadius: '16px' }}>
