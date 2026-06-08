@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-route
 import Navbar from './components/Navbar';
 import Sidebar from './components/Sidebar';
 import Landing from './pages/Landing';
+import CatalogPage from './pages/CatalogPage';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Checkout from './pages/Checkout';
@@ -13,6 +14,7 @@ import SolicitudColaborador from './pages/SolicitudColaborador';
 import CourseDetail from './pages/CourseDetail';
 import { CartProvider } from './context/CartContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import Chatbot from './components/Chatbot';
 import './App.css'; 
 
 const Layout = ({ children }) => {
@@ -39,6 +41,7 @@ const Layout = ({ children }) => {
         <main>
           {children}
         </main>
+        <Chatbot />
       </div>
     </div>
   );
@@ -52,6 +55,7 @@ function App() {
           <Layout>
             <Routes>
               <Route path="/" element={<Landing />} />
+              <Route path="/catalogo" element={<CatalogPage />} />
               <Route path="/curso/:id" element={<CourseDetail />} />
               <Route path="/checkout" element={<Checkout />} />
               <Route path="/login" element={<Login />} />

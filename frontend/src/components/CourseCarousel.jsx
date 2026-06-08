@@ -1,103 +1,211 @@
-import React, { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, User } from 'lucide-react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { ChevronLeft, ChevronRight, User, Tag, Monitor, MapPin, Star } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import ImageWithFallback from './ImageWithFallback';
 
-const CourseCarousel = ({ courses }) => {
+const AUTOPLAY_INTERVAL = 6000;
+
+const HeroCarousel = ({ courses }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [isAnimating, setIsAnimating] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
+  const [progress, setProgress] = useState(0);
   const navigate = useNavigate();
-  // Mostramos solo los 5 más recientes o primeros
-  const carouselCourses = courses.slice(0, 5);
+  const progressRef = useRef(null);
+  const startTimeRef = useRef(null);
 
+  // Usamos solo los 6 primeros cursos destacados
+  const featured = courses.slice(0, 6);
+
+  const goTo = useCallback((index) => {
+    if (isAnimating || index === currentIndex) return;
+    setIsAnimating(true);
+    setProgress(0);
+    startTimeRef.current = Date.now();
+    setCurrentIndex(index);
+    setTimeout(() => setIsAnimating(false), 600);
+  }, [isAnimating, currentIndex]);
+
+  const goNext = useCallback(() => {
+    goTo((currentIndex + 1) % featured.length);
+  }, [currentIndex, featured.length, goTo]);
+
+  const goPrev = useCallback(() => {
+    goTo(currentIndex === 0 ? featured.length - 1 : currentIndex - 1);
+  }, [currentIndex, featured.length, goTo]);
+
+  // Barra de progreso animada
   useEffect(() => {
-    if (carouselCourses.length <= 1) return;
+    if (featured.length <= 1 || isPaused) return;
     
-    const interval = setInterval(() => {
-      setCurrentIndex((prevIndex) => (prevIndex + 1) % carouselCourses.length);
-    }, 5000);
+    let animFrameId;
+    startTimeRef.current = Date.now();
     
-    return () => clearInterval(interval);
-  }, [carouselCourses.length]);
+    const animate = () => {
+      const elapsed = Date.now() - startTimeRef.current;
+      const pct = Math.min((elapsed / AUTOPLAY_INTERVAL) * 100, 100);
+      setProgress(pct);
+      if (pct < 100) {
+        animFrameId = requestAnimationFrame(animate);
+      }
+    };
+    
+    animFrameId = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(animFrameId);
+  }, [currentIndex, isPaused, featured.length]);
 
-  if (!carouselCourses || carouselCourses.length === 0) return null;
+  // Autoplay
+  useEffect(() => {
+    if (featured.length <= 1 || isPaused) return;
+    const timer = setTimeout(goNext, AUTOPLAY_INTERVAL);
+    return () => clearTimeout(timer);
+  }, [currentIndex, isPaused, goNext, featured.length]);
 
-  const handlePrev = () => {
-    setCurrentIndex((prevIndex) => (prevIndex === 0 ? carouselCourses.length - 1 : prevIndex - 1));
-  };
+  // Teclado
+  useEffect(() => {
+    const handleKey = (e) => {
+      if (e.key === 'ArrowLeft') goPrev();
+      if (e.key === 'ArrowRight') goNext();
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [goNext, goPrev]);
 
-  const handleNext = () => {
-    setCurrentIndex((prevIndex) => (prevIndex + 1) % carouselCourses.length);
+  if (!featured || featured.length === 0) return null;
+
+  const course = featured[currentIndex];
+
+  const getModalidadIcon = (modalidad) => {
+    if (!modalidad) return null;
+    const m = modalidad.toLowerCase();
+    if (m === 'online' || m === 'virtual') return <Monitor size={14} />;
+    if (m === 'presencial') return <MapPin size={14} />;
+    return <Star size={14} />;
   };
 
   return (
-    <div style={{ position: 'relative', width: '100%', maxWidth: '1200px', margin: '3rem auto 4rem', borderRadius: '24px', overflow: 'hidden', boxShadow: '0 20px 40px rgba(0,0,0,0.5)', background: 'var(--surface-color)' }}>
-      <div style={{ position: 'relative', width: '100%', height: '450px', display: 'flex', transition: 'transform 0.6s cubic-bezier(0.25, 1, 0.5, 1)', transform: `translateX(-${currentIndex * 100}%)` }}>
-        {carouselCourses.map((course) => (
-          <div key={course.id} style={{ minWidth: '100%', height: '100%', position: 'relative' }}>
-            <ImageWithFallback 
-              src={course.imagen_url} 
-              alt={course.titulo} 
-              fallbackText={course.categoria || 'Curso'}
-              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-              className="w-full h-full object-cover"
+    <div
+      className="hero-carousel-root"
+      onMouseEnter={() => setIsPaused(true)}
+      onMouseLeave={() => setIsPaused(false)}
+      role="region"
+      aria-label="Carrusel de cursos destacados"
+    >
+      {/* Slides container */}
+      <div className="hero-slides-track" style={{ transform: `translateX(-${currentIndex * 100}%)` }}>
+        {featured.map((c, idx) => (
+          <div key={c.id} className="hero-slide" aria-hidden={idx !== currentIndex}>
+            {/* Imagen de fondo */}
+            <ImageWithFallback
+              src={c.imagen_url}
+              alt={c.titulo}
+              fallbackText={c.categoria || 'Curso'}
+              className="hero-slide-bg"
             />
-            {/* Overlay Oscuro para asegurar legibilidad en el diseño Premium Dark */}
-            <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', background: 'linear-gradient(to top, rgba(15, 23, 42, 0.95) 0%, rgba(15, 23, 42, 0.6) 50%, rgba(15, 23, 42, 0.1) 100%)', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', padding: '4rem' }}>
-              <div className="animate-fade-in" style={{ maxWidth: '800px' }}>
-                <span style={{ alignSelf: 'flex-start', background: 'var(--primary-color)', color: 'white', padding: '0.4rem 1.2rem', borderRadius: '20px', fontSize: '0.9rem', fontWeight: 'bold', marginBottom: '1.5rem', display: 'inline-block' }}>
-                  {course.categoria}
-                </span>
-                <h2 style={{ fontSize: '3rem', color: 'white', marginBottom: '1rem', textShadow: '0 2px 8px rgba(0,0,0,0.6)', lineHeight: '1.2' }}>{course.titulo}</h2>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '2rem', marginBottom: '2rem' }}>
-                  <p style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#cbd5e1', margin: 0, fontSize: '1.2rem' }}>
-                    <User size={20} /> {course.instructor_name}
-                  </p>
-                  <p style={{ color: '#fbbf24', fontWeight: 'bold', margin: 0, fontSize: '1.4rem' }}>
-                    {course.precio > 0 ? `Bs. ${course.precio}` : 'Gratis'}
-                  </p>
-                </div>
-                <button 
-                  onClick={() => navigate(`/curso/${course.id}`)}
-                  className="btn btn-primary" 
-                  style={{ padding: '1rem 2.5rem', fontSize: '1.1rem', borderRadius: '12px', display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
-                >
-                  Ver Curso
-                </button>
-              </div>
-            </div>
+            {/* Overlay con gradiente lateral para legibilidad */}
+            <div className="hero-slide-overlay" />
           </div>
         ))}
       </div>
 
-      {/* Controles del Carrusel */}
-      {carouselCourses.length > 1 && (
+      {/* Contenido del slide activo — fuera del track para no moverse */}
+      <div className="hero-content-wrapper">
+        <div className={`hero-content animate-fade-in`} key={currentIndex}>
+          {/* Eyebrow label */}
+          <div className="hero-eyebrow">
+            <span className="hero-badge">{course.categoria || 'Destacado'}</span>
+            {course.modalidad && (
+              <span className="hero-meta-chip">
+                {getModalidadIcon(course.modalidad)}
+                {course.modalidad}
+              </span>
+            )}
+          </div>
+
+          {/* Headline estático de la plataforma */}
+          <h1 className="hero-headline">
+            Descubre y aprende<br />
+            <span className="hero-headline-accent">habilidades reales</span> en Sucre
+          </h1>
+
+          {/* Tarjeta glassmorphism del curso actual */}
+          <div className="hero-course-card">
+            <p className="hero-course-label">Curso en tendencia</p>
+            <h2 className="hero-course-title">{course.titulo}</h2>
+            <div className="hero-course-meta">
+              <span className="hero-course-instructor">
+                <User size={15} />
+                {course.instructor_name || 'Instructor'}
+              </span>
+              <span className="hero-course-price">
+                {course.precio > 0 ? `Bs. ${course.precio}` : 'Gratis'}
+              </span>
+            </div>
+          </div>
+
+          {/* CTAs */}
+          <div className="hero-ctas">
+            <button
+              id={`hero-cta-ver-${course.id}`}
+              className="btn btn-primary hero-btn-primary"
+              onClick={() => navigate(`/curso/${course.id}`)}
+            >
+              Ver Curso
+            </button>
+            <button
+              className="hero-btn-secondary"
+              id="hero-cta-explorar"
+              onClick={() => navigate('/catalogo')}
+            >
+              Explorar Catálogo
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Controles de navegación */}
+      {featured.length > 1 && (
         <>
-          <button 
-            onClick={handlePrev}
-            style={{ position: 'absolute', top: '50%', left: '2rem', transform: 'translateY(-50%)', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '50%', width: '50px', height: '50px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', cursor: 'pointer', backdropFilter: 'blur(8px)', transition: 'background 0.3s, transform 0.2s', zIndex: 10 }}
-            onMouseOver={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.3)'; e.currentTarget.style.transform = 'translateY(-50%) scale(1.1)'; }}
-            onMouseOut={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; e.currentTarget.style.transform = 'translateY(-50%) scale(1)'; }}
+          <button
+            id="hero-prev"
+            className="hero-nav-btn hero-nav-prev"
+            onClick={goPrev}
+            aria-label="Slide anterior"
           >
-            <ChevronLeft size={28} />
+            <ChevronLeft size={26} />
           </button>
-          <button 
-            onClick={handleNext}
-            style={{ position: 'absolute', top: '50%', right: '2rem', transform: 'translateY(-50%)', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '50%', width: '50px', height: '50px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', cursor: 'pointer', backdropFilter: 'blur(8px)', transition: 'background 0.3s, transform 0.2s', zIndex: 10 }}
-            onMouseOver={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.3)'; e.currentTarget.style.transform = 'translateY(-50%) scale(1.1)'; }}
-            onMouseOut={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; e.currentTarget.style.transform = 'translateY(-50%) scale(1)'; }}
+          <button
+            id="hero-next"
+            className="hero-nav-btn hero-nav-next"
+            onClick={goNext}
+            aria-label="Slide siguiente"
           >
-            <ChevronRight size={28} />
+            <ChevronRight size={26} />
           </button>
-          
-          <div style={{ position: 'absolute', bottom: '2rem', left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: '0.8rem', zIndex: 10 }}>
-            {carouselCourses.map((_, index) => (
+
+          {/* Dots + barra de progreso */}
+          <div className="hero-dots-bar">
+            {featured.map((_, idx) => (
               <button
-                key={index}
-                onClick={() => setCurrentIndex(index)}
-                style={{ width: index === currentIndex ? '32px' : '10px', height: '10px', borderRadius: '5px', background: index === currentIndex ? 'var(--primary-color)' : 'rgba(255,255,255,0.5)', border: 'none', cursor: 'pointer', transition: 'all 0.4s cubic-bezier(0.25, 1, 0.5, 1)' }}
-                aria-label={`Ir al curso ${index + 1}`}
-              />
+                key={idx}
+                id={`hero-dot-${idx}`}
+                className={`hero-dot ${idx === currentIndex ? 'hero-dot-active' : ''}`}
+                onClick={() => goTo(idx)}
+                aria-label={`Ir al slide ${idx + 1}`}
+              >
+                {idx === currentIndex && (
+                  <span
+                    className="hero-dot-progress"
+                    style={{ width: isPaused ? `${progress}%` : `${progress}%` }}
+                  />
+                )}
+              </button>
             ))}
+          </div>
+
+          {/* Contador de posición */}
+          <div className="hero-counter" aria-live="polite">
+            {currentIndex + 1} / {featured.length}
           </div>
         </>
       )}
@@ -105,4 +213,4 @@ const CourseCarousel = ({ courses }) => {
   );
 };
 
-export default CourseCarousel;
+export default HeroCarousel;

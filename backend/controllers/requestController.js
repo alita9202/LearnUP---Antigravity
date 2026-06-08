@@ -62,7 +62,7 @@ const updateRequestStatus = async (req, res) => {
 
     // Verificar que la solicitud pertenece a un curso del colaborador
     const [requests] = await db.execute(`
-      SELECT s.id FROM solicitudes_curso s
+      SELECT s.id, s.curso_id, s.cliente_id FROM solicitudes_curso s
       JOIN cursos c ON s.curso_id = c.id
       WHERE s.id = ? AND c.colaborador_id = ?
     `, [id, colaborador_id]);
@@ -71,12 +71,27 @@ const updateRequestStatus = async (req, res) => {
       return res.status(403).json({ message: 'No tienes permiso para modificar esta solicitud o no existe' });
     }
 
+    const solicitud = requests[0];
+
     await db.execute(
       `UPDATE solicitudes_curso 
        SET estado = ?, motivo_rechazo = ?
        WHERE id = ?`,
       [estado, estado === 'RECHAZADA' ? motivo_rechazo : null, id]
     );
+
+    // Crear inscripción automática si fue aceptada y tiene cliente_id
+    if (estado === 'ACEPTADA' && solicitud.cliente_id) {
+      try {
+        await db.execute(
+          `INSERT IGNORE INTO inscripciones (curso_id, usuario_id, estado, progreso) 
+           VALUES (?, ?, 'EN CURSO', 0)`,
+          [solicitud.curso_id, solicitud.cliente_id]
+        );
+      } catch (insertErr) {
+        console.error('Error al insertar inscripción automática:', insertErr);
+      }
+    }
 
     res.json({ message: `Solicitud ${estado.toLowerCase()} correctamente` });
   } catch (error) {

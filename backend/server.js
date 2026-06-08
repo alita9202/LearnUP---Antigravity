@@ -26,6 +26,8 @@ const enrollmentRoutes = require('./routes/enrollmentRoutes'); // Pendiente
 const instructorRoutes = require('./routes/instructorRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const requestRoutes = require('./routes/requestRoutes'); // Sprint 3
+const studentRoutes = require('./routes/studentRoutes'); // Sprint 4
+const chatbotRoutes = require('./routes/chatbotRoutes'); // Sprint 4
 
 // Use Routes
 app.use('/api/auth', authRoutes);
@@ -34,6 +36,8 @@ app.use('/api/enrollments', enrollmentRoutes);
 app.use('/api/instructors', instructorRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/requests', requestRoutes); // Sprint 3
+app.use('/api/student', studentRoutes); // Sprint 4
+app.use('/api/chatbot', chatbotRoutes); // Sprint 4
 
 // Test Route
 app.get('/', (req, res) => {

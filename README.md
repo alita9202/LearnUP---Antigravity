@@ -7,7 +7,7 @@ Frontend npm run dev
 Correo: admin@learnup.com
 Contraseña: Admin123
 
-Correo: colaborador@learnup.com
+Correo: coablorador@learnup.com
 Contraseña: Colaborador123
 
 Correo: cliente@learnup.com
